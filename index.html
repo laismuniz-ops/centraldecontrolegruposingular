@@ -229,6 +229,7 @@
     .sidebar-brand-name span { color: #fff; }
     .sidebar-brand-tagline { font-size: 9px; color: var(--muted); letter-spacing: .18em; text-transform: uppercase; margin-top: 5px; }
     .sidebar-logo-wrap { display: flex; }
+    .sidebar-logo-wrap img { mix-blend-mode: screen; opacity: 0.88; }
     .sidebar-nav { flex: 1; padding: 12px 0 24px; }
     .nav-section { margin-bottom: 2px; }
     .nav-section-header {
@@ -280,15 +281,29 @@
       overflow-y: auto; padding: 32px 0;
     }
     #loginOverlay.hidden { display: none; }
+    #loginWatermark {
+      position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #loginWatermark img {
+      width: 70vmin; height: 70vmin; object-fit: contain;
+      mix-blend-mode: screen; opacity: 0.04;
+      user-select: none;
+    }
     .login-box {
       width: 460px; max-width: 92vw;
       display: flex; flex-direction: column; align-items: center;
       margin: auto;
     }
     .login-logo-mark {
-      width: 150px; height: 150px; background: #111; border: 1px solid #1e1e1e;
+      width: 150px; height: 150px; background: transparent; border: none;
       display: flex; align-items: center; justify-content: center; margin-bottom: 24px;
       flex-shrink: 0;
+    }
+    .login-logo-mark img {
+      mix-blend-mode: screen;
+      opacity: 0.85;
+      filter: brightness(1.1);
     }
     .login-divider { width: 40px; height: 1px; background: #2a2a2a; margin: 0 auto 18px; }
     .login-subtitle { font-size: 11px; color: #444; letter-spacing: .35em; text-transform: uppercase; margin-bottom: 44px; font-weight: 400; }
@@ -452,6 +467,10 @@
 <body>
 <!-- ── LOGIN ──────────────────────────────────────────────── -->
 <div id="loginOverlay">
+  <!-- Background watermark logo -->
+  <div id="loginWatermark">
+    <img src="data:image/png;base64,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" alt="">
+  </div>
   <div class="login-box">
     <!-- Logo mark -->
     <div class="login-logo-mark" style="background:transparent;border:none;width:200px;height:auto">
@@ -595,8 +614,10 @@
         <div class="sidebar-user-role" id="sidebarUserRole">—</div>
       </div>
       <button class="sidebar-logout" onclick="doLogout()">Sair</button>
-      <button class="sidebar-logout" style="margin-left:4px;border-color:#1d4ed8;color:#3b82f6;" onclick="backupDownload()" title="Baixar backup local">⬇ Backup</button>
-      <label class="sidebar-logout" style="margin-left:4px;border-color:#065f46;color:#10b981;cursor:pointer;" title="Restaurar backup">⬆ Restaurar<input type="file" accept=".json" style="display:none" onchange="backupRestore(this)"></label>
+      <div style="display:flex;gap:4px;margin-top:4px;">
+        <button style="flex:1;padding:3px 6px;font-size:8px;font-weight:600;font-family:inherit;border-radius:5px;border:1px solid #1d4ed8;color:#3b82f6;background:none;cursor:pointer;white-space:nowrap;letter-spacing:.03em;" onclick="backupDownload()" title="Baixar backup local">⬇ Backup</button>
+        <label style="flex:1;padding:3px 6px;font-size:8px;font-weight:600;font-family:inherit;border-radius:5px;border:1px solid #065f46;color:#10b981;background:none;cursor:pointer;white-space:nowrap;text-align:center;letter-spacing:.03em;" title="Restaurar backup">⬆ Restaurar<input type="file" accept=".json" style="display:none" onchange="backupRestore(this)"></label>
+      </div>
     </div>
   </aside>
 
@@ -1028,7 +1049,7 @@ function doLogout() {
 
 // ── CLOUD SYNC ────────────────────────────────────────────────────
 // Sincroniza dados entre todos os usuários via /api/store no servidor
-const CLOUD_SYNC_KEYS = ['sing_dre_v3', 'sing_dre_orc_v1', 'sing_users_v1', 'sing_notes_v1'];
+const CLOUD_SYNC_KEYS = ['sing_dre_v3', 'sing_dre_orc_v1', 'sing_users_v1', 'sing_notes_v1', 'sing_txn_cache_v2', 'sing_txn_cache_ts', 'sing_cancel_reasons_v1'];
 
 async function cloudPull() {
   try {
@@ -2877,10 +2898,19 @@ function renderPedidosTable(todos, search, canal, cancelMode) {
   const cancelados = filtered.filter(r => str(r['Está cancelado']).toUpperCase() === 'S').length;
   const exibindo = filtered.slice(0, 1000);
 
-  const thead = `<thead><tr><th>#</th><th>Data</th><th>Loja</th><th>Canal</th><th>Consumidor</th><th>Entregador</th><th>Bairro</th><th>Itens</th><th>Entrega</th><th>Desconto</th><th>Total</th><th>Status</th></tr></thead>`;
+  const cancelReasons = _cancelReasonsLoad();
+  const thead = `<thead><tr><th>#</th><th>Data</th><th>Loja</th><th>Canal</th><th>Consumidor</th><th>Entregador</th><th>Bairro</th><th>Itens</th><th>Entrega</th><th>Desconto</th><th>Total</th><th>Status</th>${cancelMode!=='none'?'<th>Motivo</th>':''}</tr></thead>`;
   const rows = exibindo.map(r => {
     const cancelado = str(r['Está cancelado']).toUpperCase() === 'S';
     const data = str(r['Data da venda']).split(' ')[0];
+    const pedidoId = String(r['Pedido']||'');
+    const motivo = cancelado && pedidoId ? (cancelReasons[pedidoId] || '') : '';
+    const motivoCell = cancelado && pedidoId
+      ? `<td style="white-space:nowrap">
+          ${motivo ? `<span style="font-size:11px;color:var(--muted);max-width:120px;display:inline-block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle" title="${motivo.replace(/"/g,'&quot;')}">${motivo}</span> ` : ''}
+          <button onclick="cancelSetMotivo('${pedidoId.replace(/'/g,"\\'")}')" style="padding:2px 6px;font-size:10px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;" title="Adicionar/editar motivo">📝</button>
+        </td>`
+      : (cancelMode!=='none' ? '<td></td>' : '');
     return `<tr style="${cancelado&&cancelMode!=='only'?'opacity:.45':''}">
       <td style="color:var(--muted)">${r['Pedido']||'—'}</td>
       <td style="white-space:nowrap">${data}</td>
@@ -2894,6 +2924,7 @@ function renderPedidosTable(todos, search, canal, cancelMode) {
       <td>${parseNum(r['Desconto'])>0?`<span style="color:var(--muted)">-${R(parseNum(r['Desconto']))}</span>`:'—'}</td>
       <td><b>${R(parseNum(r['Total']))}</b></td>
       <td>${cancelado?badge('Cancelado','red'):badge('Ativo','green')}</td>
+      ${cancelMode!=='none'?motivoCell:''}
     </tr>`;
   }).join('');
 
@@ -2949,6 +2980,31 @@ function toggleCancelados() {
   filterPedidos();
 }
 
+// ── Motivos de cancelamento ───────────────────────────────────────
+const CANCEL_REASONS_KEY = 'sing_cancel_reasons_v1';
+
+function _cancelReasonsLoad() {
+  try { return JSON.parse(localStorage.getItem(CANCEL_REASONS_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+
+function cancelSetMotivo(pedidoId) {
+  const reasons = _cancelReasonsLoad();
+  const atual = reasons[pedidoId] || '';
+  const novo = prompt(`Motivo do cancelamento — Pedido #${pedidoId}:`, atual);
+  if (novo === null) return; // user cancelled prompt
+  if (novo.trim() === '') {
+    delete reasons[pedidoId];
+  } else {
+    reasons[pedidoId] = novo.trim();
+  }
+  const v = JSON.stringify(reasons);
+  localStorage.setItem(CANCEL_REASONS_KEY, v);
+  cloudPush(CANCEL_REASONS_KEY, v);
+  // Re-render pedidos table to show updated motivo
+  filterPedidos();
+}
+
 // ════════════════════════════════════════════════════════════════
 // DRE 2026 — Módulo Completo (Matriz · Filial · Consolidado · IA)
 // ════════════════════════════════════════════════════════════════
@@ -2960,6 +3016,42 @@ const DRE_ENT   = ['Matriz','Filial'];
 const DRE_ORC     = { adquirentes:.08, cmv:.35, despComerciais:.04, despAdmin:.15, despPessoal:.22, lucroLiq:.20 };
 const DRE_ORC_KEY = 'sing_dre_orc_v1';
 const DRE_ORC_DEF = DRE_ORC; // alias used in Orçamentos tab
+
+// Meses que usam esquema antigo (Matriz + Filial); a partir de Março usam Singular + Brisa + Consolidado
+const DRE_MESES_MATRIZ_FILIAL = ['Jan/2026','Fev/2026'];
+
+// Retorna as entidades disponíveis para um mês
+function dreEntidadesMes(mes) {
+  if (DRE_MESES_MATRIZ_FILIAL.includes(mes)) return ['Matriz','Filial','Consolidado'];
+  return ['Singular','Brisa','Consolidado'];
+}
+
+// Retorna se é entidade composta (consolidado)
+function dreIsConsolidado(ent) { return ent === 'Consolidado'; }
+
+// Para meses novos, a chave de dados usa Singular/Brisa
+function dreGetDataNew(mes, ent) {
+  return Object.assign(dreBlank(), _dreAll[mes]?.[ent] || {});
+}
+
+// Consolidado novo: soma Singular + Brisa
+function dreConsolidadoNew(mes) {
+  const fields = Object.keys(dreBlank());
+  const sing = dreGetData(mes,'Singular');
+  const bris = dreGetData(mes,'Brisa');
+  const con = dreBlank();
+  fields.forEach(k => {
+    if (k === 'receitaBrutaCorrigida') {
+      const sv = sing.receitaBrutaCorrigida !== null ? +sing.receitaBrutaCorrigida : +sing.receitaBrutaSistema;
+      const bv = bris.receitaBrutaCorrigida !== null ? +bris.receitaBrutaCorrigida : +bris.receitaBrutaSistema;
+      con.receitaBrutaSistema = sv + bv;
+      con.receitaBrutaCorrigida = null;
+    } else if (k !== 'receitaBrutaSistema') {
+      con[k] = (+sing[k] || 0) + (+bris[k] || 0);
+    }
+  });
+  return con;
+}
 
 let _dreOrcAll = {}; // { 'global': {...}, 'Jan/2026': {...}, ... }
 
@@ -2981,13 +3073,13 @@ function dreGetOrc(mes) {
 }
 
 let _dreMes      = 'anual';
-let _dreEnt      = 'Matriz';      // 'Matriz' | 'Filial' | 'Consolidado'
+let _dreEnt      = 'Matriz';      // 'Matriz' | 'Filial' | 'Singular' | 'Brisa' | 'Consolidado'
 let _dreTab      = 'resumo';      // 'resumo' | 'lancar' | 'orcamentos' | 'ia'
 let _dreAnualTab    = 'resumo';   // 'resumo' | 'ia'
 let _dreAnualFiltro = null;       // null = todos; Set de meses selecionados
-let _dreAll         = {};         // { 'Jan/2026': { 'Matriz': {...}, 'Filial': {...} } }
+let _dreAll         = {};         // { 'Jan/2026': { 'Matriz': {...}, 'Filial': {...} }, 'Mar/2026': { 'Singular': {...}, 'Brisa': {...} } }
 
-const DRE_MESES_FILIAL = ['Jan/2026','Fev/2026']; // meses que têm dados de Filial
+const DRE_MESES_FILIAL = ['Jan/2026','Fev/2026']; // meses que têm dados de Filial (legado)
 
 // ── Persistência ─────────────────────────────────────────────────
 function dreLoad() {
@@ -2996,9 +3088,10 @@ function dreLoad() {
     // Migração v2 → v3: dados antigos sem entidade viram Matriz
     _dreAll = {};
     for (const [mes, val] of Object.entries(raw)) {
-      if (val && typeof val === 'object' && ('Matriz' in val || 'Filial' in val)) {
+      if (val && typeof val === 'object' && ('Matriz' in val || 'Filial' in val || 'Singular' in val || 'Brisa' in val)) {
         _dreAll[mes] = val;
       } else if (val && typeof val === 'object' && 'receitaBrutaSistema' in val) {
+        // Legacy: dados sem entidade viram Matriz
         _dreAll[mes] = { Matriz: val };
       } else {
         _dreAll[mes] = val;
@@ -3126,12 +3219,22 @@ function dreRender() {
   if (!root) return;
   const isMesNormal = DRE_MESES.includes(_dreMes);
 
-  // Linha de meses + botão resumo anual
-  const temFilialNoMes = DRE_MESES_FILIAL.includes(_dreMes);
+  // Determina entidades disponíveis para o mês selecionado
+  const entidadesMes = isMesNormal ? dreEntidadesMes(_dreMes) : [];
+  const isNovoEsquema = isMesNormal && !DRE_MESES_MATRIZ_FILIAL.includes(_dreMes);
+
+  // Ajusta entidade ativa se não for válida para o mês
+  if (isMesNormal && !entidadesMes.includes(_dreEnt)) {
+    _dreEnt = entidadesMes[0];
+  }
+
   const btnMes = (m) => {
-    const temDados = dreTemDados(m,'Matriz')||dreTemDados(m,'Filial');
-    const temFilialM = DRE_MESES_FILIAL.includes(m);
-    return `<button onclick="_dreMes='${m}';if(!${temFilialM})_dreEnt='Matriz';else if(_dreEnt==='Consolidado'&&!dreTemDados('${m}','Filial'))_dreEnt='Matriz';dreRender()"
+    const isNovo = !DRE_MESES_MATRIZ_FILIAL.includes(m);
+    const temDados = isNovo
+      ? (dreTemDados(m,'Singular') || dreTemDados(m,'Brisa'))
+      : (dreTemDados(m,'Matriz') || dreTemDados(m,'Filial'));
+    const entsPrimeiraClick = isNovo ? 'Singular' : 'Matriz';
+    return `<button onclick="_dreMes='${m}';_dreEnt='${entsPrimeiraClick}';dreRender()"
       style="padding:5px 11px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid ${_dreMes===m?'var(--accent)':'var(--border)'};background:${_dreMes===m?'var(--accent)':'transparent'};color:${_dreMes===m?'#fff':temDados?'var(--text)':'var(--muted)'};transition:all .15s;position:relative">
       ${m.replace('/2026','')}${temDados?'<span style="position:absolute;top:2px;right:2px;width:5px;height:5px;border-radius:50%;background:#22c55e"></span>':''}
     </button>`;
@@ -3152,7 +3255,7 @@ function dreRender() {
     ${isMesNormal?`
       <div style="display:flex;align-items:center;gap:0;margin-bottom:16px;border-bottom:1px solid var(--border)">
         <span style="font-size:11px;color:var(--muted);margin-right:12px;font-weight:600">Entidade:</span>
-        ${(temFilialNoMes?['Matriz','Filial','Consolidado']:['Matriz']).map(e=>`
+        ${entidadesMes.map(e=>`
           <button onclick="_dreEnt='${e}';dreRender()"
             style="padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:none;background:transparent;color:${_dreEnt===e?'var(--text)':'var(--muted)'};border-bottom:2px solid ${_dreEnt===e?'var(--accent)':'transparent'};margin-bottom:-1px;transition:all .15s">${e}</button>`).join('')}
         <div style="flex:1"></div>
@@ -3173,7 +3276,14 @@ function dreRenderConteudo() {
   }
   if (_dreTab === 'ia')          { dreRenderIA(el);         return; }
   if (_dreTab === 'orcamentos')  { dreRenderOrcamentos(el);  return; }
-  const d = _dreEnt === 'Consolidado' ? dreConsolidado(_dreMes) : dreGetData(_dreMes, _dreEnt);
+  // Para meses com novo esquema (Mar+), Consolidado = Singular + Brisa
+  const isNovoEsq = !DRE_MESES_MATRIZ_FILIAL.includes(_dreMes);
+  let d;
+  if (_dreEnt === 'Consolidado') {
+    d = isNovoEsq ? dreConsolidadoNew(_dreMes) : dreConsolidado(_dreMes);
+  } else {
+    d = dreGetData(_dreMes, _dreEnt);
+  }
   if (_dreTab === 'lancar' && _dreEnt !== 'Consolidado') dreRenderLancar(el, d);
   else dreRenderResumo(el, d);
 }
@@ -3283,7 +3393,9 @@ function dreRenderResumo(el, d) {
 // ── LANÇAMENTO ────────────────────────────────────────────────────
 function dreRenderLancar(el, d) {
   if (_dreEnt === 'Consolidado') {
-    el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">O Consolidado é calculado automaticamente a partir de Matriz + Filial.<br>Selecione <b>Matriz</b> ou <b>Filial</b> para lançar dados.</div>`;
+    const isNovo = !DRE_MESES_MATRIZ_FILIAL.includes(_dreMes);
+    const entLabel = isNovo ? 'Singular ou Brisa' : 'Matriz ou Filial';
+    el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">O Consolidado é calculado automaticamente.<br>Selecione <b>${entLabel}</b> para lançar dados.</div>`;
     return;
   }
 
@@ -3902,14 +4014,7 @@ function showSubSection(section, sub) {
 
   // Init Saipos API panel when navigating to it
   if (section === 'comercial' && sub === 'conexao') {
-    setTimeout(() => {
-      const tk = _saiposGetToken();
-      const tokenField = document.getElementById('saiposToken');
-      if (tokenField && tk && !tokenField.value) {
-        tokenField.value = tk;
-        _saiposTokenStatus('Token configurado.', 'green');
-      }
-    }, 50);
+    setTimeout(() => _initSaiposPanel(), 50);
   }
 
   // DRE
@@ -3991,8 +4096,13 @@ function salvarDadosTxn(allRows, sourceLabel) {
         return out;
       })
     };
-    localStorage.setItem(TXN_CACHE_KEY, JSON.stringify(data));
-    localStorage.setItem(TXN_CACHE_TS, Date.now().toString());
+    const serialized = JSON.stringify(data);
+    const ts = Date.now().toString();
+    localStorage.setItem(TXN_CACHE_KEY, serialized);
+    localStorage.setItem(TXN_CACHE_TS, ts);
+    // Push to cloud so all users share the same sales data
+    cloudPush(TXN_CACHE_KEY, serialized);
+    cloudPush(TXN_CACHE_TS, ts);
   } catch(e) { console.warn('[cache] save failed:', e.message); }
 }
 
@@ -4425,7 +4535,8 @@ function saiposCarregarNoDashboard() {
 }
 
 // Initialize API panel: load saved token + set default dates + check proxy
-(function _initSaiposPanel() {
+// Called only when the user navigates to the Saipos panel
+function _initSaiposPanel() {
   const tk = _saiposGetToken();
   const tokenField = document.getElementById('saiposToken');
   if (tokenField && tk) { tokenField.value = tk; _saiposTokenStatus('Token configurado.', 'green'); }
@@ -4439,9 +4550,9 @@ function saiposCarregarNoDashboard() {
   if (startEl && !startEl.value) startEl.value = fmt(week);
   if (endEl && !endEl.value)     endEl.value   = fmt(today);
 
-  // Check proxy status silently
+  // Check proxy status only when panel is actually viewed
   saiposVerificarProxy();
-})();
+}
 
 // ────────────────────────────────────────────────────────────────
 // ATUALIZAÇÃO AUTOMÁTICA VIA URL DE ARQUIVO
