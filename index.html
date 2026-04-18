@@ -3085,14 +3085,19 @@ const DRE_MESES_FILIAL = ['Jan/2026','Fev/2026']; // meses que têm dados de Fil
 function dreLoad() {
   try {
     const raw = JSON.parse(localStorage.getItem(DRE_KEY) || '{}');
-    // Migração v2 → v3: dados antigos sem entidade viram Matriz
     _dreAll = {};
     for (const [mes, val] of Object.entries(raw)) {
       if (val && typeof val === 'object' && ('Matriz' in val || 'Filial' in val || 'Singular' in val || 'Brisa' in val)) {
         _dreAll[mes] = val;
+        // Migração: meses de Março+ que tinham dados em 'Matriz' → copiar para 'Singular'
+        if (!DRE_MESES_MATRIZ_FILIAL.includes(mes) && _dreAll[mes]['Matriz'] && !_dreAll[mes]['Singular']) {
+          _dreAll[mes]['Singular'] = _dreAll[mes]['Matriz'];
+          delete _dreAll[mes]['Matriz'];
+        }
       } else if (val && typeof val === 'object' && 'receitaBrutaSistema' in val) {
-        // Legacy: dados sem entidade viram Matriz
-        _dreAll[mes] = { Matriz: val };
+        // Legacy: decide entidade baseado no mês
+        const entLegacy = DRE_MESES_MATRIZ_FILIAL.includes(mes) ? 'Matriz' : 'Singular';
+        _dreAll[mes] = { [entLegacy]: val };
       } else {
         _dreAll[mes] = val;
       }
