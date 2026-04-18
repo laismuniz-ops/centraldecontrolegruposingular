@@ -474,8 +474,12 @@
       </div>
       <div class="login-field">
         <label>Senha</label>
-        <input type="password" id="loginPass" placeholder="Sua senha" autocomplete="current-password"
-          onkeydown="if(event.key==='Enter') doLogin()">
+        <div style="position:relative;">
+          <input type="password" id="loginPass" placeholder="Sua senha" autocomplete="current-password"
+            onkeydown="if(event.key==='Enter') doLogin()" style="padding-right:40px;width:100%;box-sizing:border-box;">
+          <button type="button" onclick="const i=document.getElementById('loginPass');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈';"
+            style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:#888;padding:0;line-height:1;">👁</button>
+        </div>
       </div>
       <button class="login-btn" onclick="doLogin()">Entrar</button>
       <div class="login-err" id="loginErr"></div>
@@ -976,6 +980,8 @@ function doLogin() {
     document.getElementById('loginOverlay').classList.add('hidden');
     _applyPermissionsToSidebar();
     _updateSidebarUser();
+    // Carrega dados de vendas do cache após login
+    setTimeout(() => carregarDadosTxn(), 0);
     showHome();
   });
 }
