@@ -796,7 +796,7 @@
         <div style="background:#0d1f0d;border:1px solid #1a3a1a;border-radius:12px;padding:18px 24px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
           <div>
             <div style="font-size:13px;font-weight:700;color:#4ade80;margin-bottom:3px">🟢 Backup automático ativo</div>
-            <div style="font-size:12px;color:var(--muted)">Salva automaticamente a cada minuto. Último: <span id="autobackup-ts">—</span></div>
+            <div style="font-size:12px;color:var(--muted)">Salva automaticamente a cada alteração. Último: <span id="autobackup-ts">—</span></div>
           </div>
           <button onclick="backupRestoreAuto()" id="autobackup-btn" style="padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;border:1px solid #4ade80;background:none;color:#4ade80;cursor:pointer;font-family:inherit;white-space:nowrap;">↩ Voltar para o último</button>
         </div>
@@ -911,6 +911,7 @@ function _saveUsers(u) {
   const v = JSON.stringify(u);
   localStorage.setItem('sing_users_v1', v);
   cloudPush('sing_users_v1', v);
+  backupSaveAuto();
 }
 function _getSession() { try { return JSON.parse(sessionStorage.getItem('sing_session')||'null'); } catch(e) { return null; } }
 function _setSession(u) { u ? sessionStorage.setItem('sing_session', JSON.stringify(u)) : sessionStorage.removeItem('sing_session'); }
@@ -1099,11 +1100,8 @@ function backupUpdateUI() {
   if (el && ts) el.textContent = new Date(parseInt(ts)).toLocaleTimeString('pt-BR');
 }
 
-// Inicia o auto-backup após 1 minuto do carregamento, depois a cada 1 minuto
-setTimeout(() => {
-  backupSaveAuto();
-  setInterval(backupSaveAuto, 60000);
-}, 60000);
+// Salva backup automático na inicialização
+setTimeout(() => backupSaveAuto(), 3000);
 
 function doLogout() {
   _setSession(null);
@@ -1160,6 +1158,7 @@ function notesSaveAll(obj) {
     const v = JSON.stringify(obj);
     localStorage.setItem(NOTES_KEY, v);
     cloudPush(NOTES_KEY, v);
+    backupSaveAuto();
   } catch {}
 }
 function notesGetPage() {
@@ -3131,6 +3130,7 @@ function dreOrcSave() {
     const v = JSON.stringify(_dreOrcAll);
     localStorage.setItem(DRE_ORC_KEY, v);
     cloudPush(DRE_ORC_KEY, v);
+    backupSaveAuto();
   } catch(e) {}
 }
 function dreGetOrc(mes) {
@@ -3175,6 +3175,7 @@ function dreSave() {
   const v = JSON.stringify(_dreAll);
   localStorage.setItem(DRE_KEY, v);
   cloudPush(DRE_KEY, v);
+  backupSaveAuto();
 }
 function dreBlank() {
   return { receitaBrutaSistema:0, receitaBrutaCorrigida:null,
