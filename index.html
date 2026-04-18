@@ -281,15 +281,6 @@
       overflow-y: auto; padding: 32px 0;
     }
     #loginOverlay.hidden { display: none; }
-    #loginWatermark {
-      position: absolute; inset: 0; pointer-events: none; overflow: hidden;
-      display: flex; align-items: center; justify-content: center;
-    }
-    #loginWatermark img {
-      width: 70vmin; height: 70vmin; object-fit: contain;
-      mix-blend-mode: screen; opacity: 0.04;
-      user-select: none;
-    }
     .login-box {
       width: 460px; max-width: 92vw;
       display: flex; flex-direction: column; align-items: center;
@@ -468,9 +459,6 @@
 <!-- ── LOGIN ──────────────────────────────────────────────── -->
 <div id="loginOverlay">
   <!-- Background watermark logo -->
-  <div id="loginWatermark">
-    <img src="data:image/png;base64,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" alt="">
-  </div>
   <div class="login-box">
     <!-- Logo mark -->
     <div class="login-logo-mark" style="background:transparent;border:none;width:200px;height:auto">
@@ -971,19 +959,14 @@ function homeEnterArea(cat) {
 }
 
 function doLogin() {
-  const username = document.getElementById('loginUser').value.trim();
+  const username = document.getElementById('loginUser').value.trim().toLowerCase();
   const password = document.getElementById('loginPass').value;
   const err = document.getElementById('loginErr');
   err.textContent = '';
-  // Primeiro tenta com dados locais (rápido)
-  const u = _loadUsers().find(x => x.username === username && x.password === password);
-  if (!u) { err.textContent = 'Usuário ou senha incorretos.'; return; }
-  err.textContent = '';
   const btn = document.querySelector('.login-btn');
   if (btn) { btn.textContent = 'Sincronizando…'; btn.disabled = true; }
-  // Puxa dados do servidor antes de entrar
+  // Sempre puxa do servidor primeiro para garantir usuários atualizados
   cloudPull().then(() => {
-    // Re-verifica com dados atualizados do servidor
     const u2 = _loadUsers().find(x => x.username === username && x.password === password);
     if (!u2) {
       if (btn) { btn.textContent = 'Entrar'; btn.disabled = false; }
