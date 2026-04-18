@@ -788,21 +788,32 @@
 
     <!-- Admin → Usuários -->
     <div id="sp-admin-backup" class="section-page">
-      <main style="max-width:600px;padding:24px 28px">
+      <main style="max-width:620px;padding:24px 28px">
         <h2 style="font-size:18px;font-weight:700;margin-bottom:6px">Backup & Restauração</h2>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:32px">Salve ou recupere todos os dados do sistema</p>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:24px">Salve ou recupere todos os dados do sistema</p>
 
+        <!-- Auto-backup status -->
+        <div style="background:#0d1f0d;border:1px solid #1a3a1a;border-radius:12px;padding:18px 24px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#4ade80;margin-bottom:3px">🟢 Backup automático ativo</div>
+            <div style="font-size:12px;color:var(--muted)">Salva automaticamente a cada minuto. Último: <span id="autobackup-ts">—</span></div>
+          </div>
+          <button onclick="backupRestoreAuto()" id="autobackup-btn" style="padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;border:1px solid #4ade80;background:none;color:#4ade80;cursor:pointer;font-family:inherit;white-space:nowrap;">↩ Voltar para o último</button>
+        </div>
+
+        <!-- Manual download -->
         <div style="background:#111;border-radius:12px;padding:24px;margin-bottom:16px;border:1px solid #222">
-          <div style="font-size:15px;font-weight:700;margin-bottom:6px">⬇ Baixar Backup</div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Gera um arquivo <code>.json</code> com todos os dados: DRE, orçamento, vendas, usuários e anotações. Guarde em local seguro.</p>
+          <div style="font-size:15px;font-weight:700;margin-bottom:6px">⬇ Baixar Backup Manual</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Gera um arquivo <code>.json</code> com todos os dados: DRE, orçamento, vendas, usuários e anotações.</p>
           <button onclick="backupDownload()" style="padding:10px 24px;border-radius:8px;font-size:13px;font-weight:700;border:none;background:#1d4ed8;color:#fff;cursor:pointer;font-family:inherit">⬇ Baixar Backup Agora</button>
         </div>
 
+        <!-- Restore from file -->
         <div style="background:#111;border-radius:12px;padding:24px;border:1px solid #222">
-          <div style="font-size:15px;font-weight:700;margin-bottom:6px">⬆ Restaurar Backup</div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Selecione um arquivo de backup <code>.json</code> para importar os dados de volta. Os dados atuais serão substituídos.</p>
+          <div style="font-size:15px;font-weight:700;margin-bottom:6px">⬆ Restaurar de Arquivo</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Selecione um arquivo de backup <code>.json</code>. Os dados atuais serão substituídos.</p>
           <label style="display:inline-block;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:700;border:none;background:#065f46;color:#10b981;cursor:pointer;font-family:inherit">
-            ⬆ Selecionar Arquivo para Restaurar
+            ⬆ Selecionar Arquivo
             <input type="file" accept=".json" style="display:none" onchange="backupRestore(this)">
           </label>
         </div>
@@ -1046,6 +1057,53 @@ function backupRestore(input) {
   reader.readAsText(file);
   input.value = '';
 }
+
+// ── Auto-backup (a cada 1 minuto) ────────────────────────────────
+const AUTOBACKUP_KEY = 'sing_autobackup_v1';
+const AUTOBACKUP_TS_KEY = 'sing_autobackup_ts';
+
+function backupSaveAuto() {
+  try {
+    const all = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k === AUTOBACKUP_KEY || k === AUTOBACKUP_TS_KEY) continue; // não salva o próprio backup
+      all[k] = localStorage.getItem(k);
+    }
+    const ts = Date.now();
+    localStorage.setItem(AUTOBACKUP_KEY, JSON.stringify(all));
+    localStorage.setItem(AUTOBACKUP_TS_KEY, ts.toString());
+    // Atualiza UI se estiver na página de backup
+    const el = document.getElementById('autobackup-ts');
+    if (el) el.textContent = new Date(ts).toLocaleTimeString('pt-BR');
+  } catch(e) { console.warn('[autobackup] falhou:', e.message); }
+}
+
+function backupRestoreAuto() {
+  const raw = localStorage.getItem(AUTOBACKUP_KEY);
+  const ts  = localStorage.getItem(AUTOBACKUP_TS_KEY);
+  if (!raw) { alert('Nenhum backup automático encontrado ainda.'); return; }
+  const tsStr = ts ? new Date(parseInt(ts)).toLocaleString('pt-BR') : '—';
+  if (!confirm('Restaurar backup automático de ' + tsStr + '?\nOs dados atuais serão substituídos.')) return;
+  try {
+    const data = JSON.parse(raw);
+    Object.keys(data).forEach(k => localStorage.setItem(k, data[k]));
+    alert('✅ Restaurado! A página vai recarregar.');
+    location.reload();
+  } catch(e) { alert('❌ Erro: ' + e.message); }
+}
+
+function backupUpdateUI() {
+  const ts = localStorage.getItem(AUTOBACKUP_TS_KEY);
+  const el = document.getElementById('autobackup-ts');
+  if (el && ts) el.textContent = new Date(parseInt(ts)).toLocaleTimeString('pt-BR');
+}
+
+// Inicia o auto-backup após 1 minuto do carregamento, depois a cada 1 minuto
+setTimeout(() => {
+  backupSaveAuto();
+  setInterval(backupSaveAuto, 60000);
+}, 60000);
 
 function doLogout() {
   _setSession(null);
@@ -4062,12 +4120,14 @@ function showSubSection(section, sub) {
     'financeiro-main':       '<span>FINANCEIRO</span> · Em breve',
     'rh-main':               '<span>RH</span> · Em breve',
     'admin-usuarios':        '<span>ADMINISTRAÇÃO</span> · Usuários',
+    'admin-backup':          '<span>ADMINISTRAÇÃO</span> · Backup',
   };
   const headerTitle = document.getElementById('headerTitle');
   if (headerTitle) headerTitle.innerHTML = titles[section+'-'+sub] || section;
 
   _activePage = section + '-' + sub;
   notesOnPageChange();
+  if (section === 'admin' && sub === 'backup') backupUpdateUI();
 }
 
 function triggerUpload(section) {
