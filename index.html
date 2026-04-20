@@ -3374,26 +3374,59 @@ function dreRenderResumo(el, d) {
     return;
   }
 
-  const br = c.rb;
+  const br  = c.rb;
   const fmt = v => { const neg=v<0; const s='R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); return `<span style="color:${neg?'#dc2626':'inherit'}">${neg?'-'+s:s}</span>`; };
+  const fmtN = v => (v<0?'-':'')+'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0});
   const pct = v => br?((v/br)*100).toFixed(1)+'%':'—';
   const orc = dreGetOrc(_dreMes);
-  const orcBadge = (val,key,isP=false) => {
+
+  // ── FEATURE: Barra de progresso vs Orçamento ─────────────────────
+  const orcBar = (val,key,isP=false) => {
     if(!orc[key]||!br) return '';
-    const rp=Math.abs(val)/br, orcV=orc[key], ok=isP?rp>=orcV:rp<=orcV;
+    const rp=Math.abs(val)/br, orcV=orc[key];
+    const ok = isP ? rp>=orcV : rp<=orcV;
+    const fillPct = Math.min((rp/orcV)*100,100).toFixed(0);
     const diff=((rp-orcV)*100).toFixed(1), sign=diff>0?'+':'';
-    return `<span style="font-size:10px;padding:2px 8px;border-radius:99px;font-weight:700;background:${ok?'rgba(34,197,94,.12)':'rgba(239,68,68,.12)'};color:${ok?'#16a34a':'#dc2626'}">Orc.${(orcV*100).toFixed(0)}% ${sign}${diff}pp</span>`;
+    const cor = ok?'#22c55e':'#ef4444';
+    const corBg = ok?'rgba(34,197,94,.15)':'rgba(239,68,68,.15)';
+    return `<div style="min-width:90px">
+      <div style="background:var(--border);border-radius:4px;height:5px;overflow:hidden;margin-bottom:3px">
+        <div style="width:${fillPct}%;background:${cor};height:100%;border-radius:4px;transition:width .3s"></div>
+      </div>
+      <div style="font-size:10px;color:${cor};text-align:right;font-weight:700">${(rp*100).toFixed(1)}% <span style="color:var(--muted);font-weight:400">meta ${(orcV*100).toFixed(0)}%</span> <span style="background:${corBg};color:${cor};border-radius:3px;padding:0 3px">${sign}${diff}pp</span></div>
+    </div>`;
+  };
+
+  // ── FEATURE: Split Singular / Brisa nos KPIs ─────────────────────
+  const isNovaMes = !DRE_MESES_MATRIZ_FILIAL.includes(_dreMes);
+  const isConsolid = _dreEnt === 'Consolidado';
+  let cS=null, cB=null;
+  if (isConsolid && isNovaMes) {
+    cS = dreCalc(dreGetData(_dreMes,'Singular'));
+    cB = dreCalc(dreGetData(_dreMes,'Brisa'));
+  }
+  const splitLine = (vS,vB) => {
+    if (!cS||!cB) return '';
+    return `<div style="font-size:9px;color:var(--muted);margin-top:3px;display:flex;gap:6px">
+      <span>S: <b style="color:#a78bfa">${fmtN(vS)}</b></span>
+      <span>B: <b style="color:#34d399">${fmtN(vB)}</b></span>
+    </div>`;
   };
 
   const kpis = [
-    {l:'Receita Bruta',v:c.rb,color:'#3b82f6'},
-    {l:'Receita Líquida',v:c.rl,color:'#6366f1',p:true},
-    {l:'Lucro Bruto',v:c.lb,color:c.lb>=0?'#22c55e':'#ef4444',p:true},
-    {l:'Margem Contrib.',v:c.mc,color:c.mc>=0?'#22c55e':'#ef4444',p:true},
-    {l:'Lucro Operacional',v:c.lop,color:c.lop>=0?'#22c55e':'#ef4444',p:true},
-    {l:'Lucro Líquido',v:c.ll,color:c.ll>=0?'#22c55e':'#ef4444',p:true},
-    {l:'Resultado Final',v:c.lf,color:c.lf>=0?'#22c55e':'#ef4444',p:true},
+    {l:'Receita Bruta',   v:c.rb,  color:'#3b82f6', sV:cS?.rb,  bV:cB?.rb},
+    {l:'Receita Líquida', v:c.rl,  color:'#6366f1', p:true, sV:cS?.rl, bV:cB?.rl},
+    {l:'Lucro Bruto',     v:c.lb,  color:c.lb>=0?'#22c55e':'#ef4444',  p:true, sV:cS?.lb,  bV:cB?.lb},
+    {l:'Margem Contrib.', v:c.mc,  color:c.mc>=0?'#22c55e':'#ef4444',  p:true, sV:cS?.mc,  bV:cB?.mc},
+    {l:'Lucro Operacional',v:c.lop,color:c.lop>=0?'#22c55e':'#ef4444', p:true, sV:cS?.lop, bV:cB?.lop},
+    {l:'Lucro Líquido',   v:c.ll,  color:c.ll>=0?'#22c55e':'#ef4444',  p:true, sV:cS?.ll,  bV:cB?.ll},
+    {l:'Resultado Final', v:c.lf,  color:c.lf>=0?'#22c55e':'#ef4444',  p:true, sV:cS?.lf,  bV:cB?.lf},
   ];
+
+  // ── FEATURE: Cabeçalho de categoria na tabela ─────────────────────
+  const cat = label => `<tr>
+    <td colspan="4" style="padding:10px 12px 4px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);border-top:1px solid var(--border)">${label}</td>
+  </tr>`;
 
   const row = (label,val,opts={}) => {
     const {lv=2,orc=null,isP=false,sep=false}=opts;
@@ -3405,7 +3438,7 @@ function dreRenderResumo(el, d) {
       <td style="padding:8px 12px;font-size:13px;${fw};${pl}">${label}</td>
       <td style="padding:8px 12px;font-size:13px;${fw};text-align:right;white-space:nowrap">${fmt(val)}</td>
       <td style="padding:8px 12px;font-size:12px;color:var(--muted);text-align:right">${val!==0?pct(val):''}</td>
-      <td style="padding:8px 16px;text-align:right">${orc?orcBadge(val,orc,isP):''}</td>
+      <td style="padding:8px 16px;text-align:right">${orc?orcBar(val,orc,isP):''}</td>
     </tr>`;
   };
 
@@ -3415,6 +3448,7 @@ function dreRenderResumo(el, d) {
         <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">${k.l}</div>
         <div style="font-size:16px;font-weight:800;color:${k.color}">${k.v<0?'-':''}R$ ${Math.abs(k.v).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
         ${k.p&&br?`<div style="font-size:10px;color:var(--muted);margin-top:2px">${pct(k.v)} da receita</div>`:''}
+        ${cS&&k.sV!==undefined?splitLine(k.sV,k.bV):''}
       </div>`).join('')}
     </div>
     <div class="table-box" style="padding:0;overflow:hidden">
@@ -3426,30 +3460,31 @@ function dreRenderResumo(el, d) {
           <th style="padding:9px 16px;font-size:11px;text-align:right;text-transform:uppercase;letter-spacing:.08em">vs Orç.</th>
         </tr></thead>
         <tbody>
+          ${cat('Receitas')}
           ${row('Receita Bruta de Vendas',c.rb,{lv:0})}
           ${row('Impostos sobre Vendas',-d.impostos,{lv:2})}
           ${row('Taxas de Adquirentes',-d.adquirentes,{lv:2,orc:'adquirentes'})}
           ${row('Deduções de Vendas',-d.deducoesVendas,{lv:2})}
           ${row('= Receita Líquida',c.rl,{lv:1})}
-          ${row('',0,{sep:true})}
+          ${cat('Custos')}
           ${row('CMV (Mercadoria)',-d.cmv,{lv:2,orc:'cmv'})}
           ${row('Custo Vendas / Entregadores',-d.custoVendas,{lv:2})}
           ${row('= Lucro Bruto',c.lb,{lv:0})}
-          ${row('',0,{sep:true})}
+          ${cat('Despesas Variáveis')}
           ${row('Despesas Comerciais (Marketing)',-d.despComerciais,{lv:2,orc:'despComerciais'})}
           ${row('Outras Despesas Variáveis',-d.outrasDespVar,{lv:2})}
           ${row('= Margem de Contribuição',c.mc,{lv:0})}
-          ${row('',0,{sep:true})}
+          ${cat('Despesas Fixas')}
           ${row('Despesas Administrativas',-d.despAdmin,{lv:2,orc:'despAdmin'})}
           ${row('Despesas com Pessoal (CMO)',-d.despPessoal,{lv:2,orc:'despPessoal'})}
           ${row('= Lucro / Prejuízo Operacional',c.lop,{lv:0})}
-          ${row('',0,{sep:true})}
+          ${cat('Resultado Financeiro')}
           ${row('(+) Receitas Financeiras',d.recFinanc,{lv:2})}
           ${row('(-) Despesas Financeiras',-d.despFinanc,{lv:2})}
           ${row('(+) Receitas Não Operacionais',d.recNaoOp,{lv:2})}
           ${row('(-) Despesas Não Operacionais',-d.despNaoOp,{lv:2})}
           ${row('= Lucro / Prejuízo Líquido',c.ll,{lv:0,orc:'lucroLiq',isP:true})}
-          ${row('',0,{sep:true})}
+          ${cat('Investimentos')}
           ${row('Investimentos Operacionais',-d.investOp,{lv:2})}
           ${row('Investimentos Estratégicos',-d.investEst,{lv:2})}
           ${row('Empréstimos e Dívidas',-d.emprestimos,{lv:2})}
