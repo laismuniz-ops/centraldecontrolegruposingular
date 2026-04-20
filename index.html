@@ -3444,28 +3444,39 @@ function dreRenderResumo(el, d) {
     <td colspan="4" style="padding:10px 12px 4px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);border-top:1px solid var(--border)">${label}</td>
   </tr>`;
 
+  // Apenas Abril por enquanto — subcategorias do pivot
+  const isAbril = _dreMes === 'Abr/2026';
+  let _subToggleIdx = 0;
+
   const row = (label,val,opts={}) => {
     const {lv=2,orc=null,isP=false,sep=false,field=null}=opts;
     if(sep) return `<tr><td colspan="4" style="height:1px;padding:0;background:var(--border)"></td></tr>`;
     const bg=lv===0?'background:var(--surface2)':lv===1?'background:rgba(0,0,0,.02)':'';
     const fw=lv<=1?'font-weight:700':'';
     const pl=lv===2?'padding-left:28px':lv===1?'padding-left:14px':'';
-    const subs = field && d.subs && d.subs[field] ? d.subs[field] : [];
+
+    // Subcategorias: só para Abril e se o campo tiver subs importadas do pivot
+    const subs = (isAbril && field && d.subs && d.subs[field]) ? d.subs[field] : [];
     const hasSubs = subs.length > 0;
-    const subId = field ? `subs-${field}-${_dreMes.replace('/','_')}` : null;
-    const toggleBtn = hasSubs ? `<span onclick="document.getElementById('${subId}').style.display=document.getElementById('${subId}').style.display==='none'?'':'none';this.textContent=this.textContent==='▶'?'▼':'▶'" style="cursor:pointer;font-size:9px;color:var(--muted);margin-right:6px;user-select:none">▼</span>` : '';
-    const subRows = hasSubs ? `<tbody id="${subId}">` + subs.map(s => {
-      const sv = s.v; // valor com sinal original do pivot
+    const grpId = hasSubs ? `dre-sub-${_subToggleIdx++}` : null;
+
+    const toggleBtn = hasSubs
+      ? `<span id="btn-${grpId}" onclick="(function(id){var els=document.querySelectorAll('[data-grp=\\''+id+'\\']'),open=els[0].style.display!=='none';els.forEach(function(r){r.style.display=open?'none':'';});document.getElementById('btn-'+id).textContent=open?'▶':'▼';}('${grpId}'))" style="cursor:pointer;font-size:9px;color:var(--muted);margin-right:5px;user-select:none">▼</span>`
+      : '';
+
+    const subRows = hasSubs ? subs.map(s => {
+      const sv = s.v;
       const neg = sv < 0;
-      const sfmt = `<span style="color:${neg?'#ef4444':'#22c55e'}">${neg?'-':''}R$ ${Math.abs(sv).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>`;
+      const sfmt = `<span style="color:${neg?'#ef4444':'#10b981'}">${neg?'-':''}R$ ${Math.abs(sv).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`;
       const spct = br ? `${((Math.abs(sv)/br)*100).toFixed(1)}%` : '—';
-      return `<tr style="background:rgba(0,0,0,.015)">
-        <td style="padding:5px 12px 5px 44px;font-size:12px;color:var(--muted)">${s.l}</td>
-        <td style="padding:5px 12px;font-size:12px;text-align:right;white-space:nowrap">${sfmt}</td>
-        <td style="padding:5px 12px;font-size:11px;color:var(--muted);text-align:right">${spct}</td>
+      return `<tr data-grp="${grpId}" style="background:rgba(255,255,255,.02)">
+        <td style="padding:4px 12px 4px 44px;font-size:11px;color:var(--muted)">${s.l}</td>
+        <td style="padding:4px 12px;font-size:11px;color:var(--muted);text-align:right;white-space:nowrap">${sfmt}</td>
+        <td style="padding:4px 12px;font-size:10px;color:var(--muted);text-align:right">${spct}</td>
         <td></td>
       </tr>`;
-    }).join('') + '</tbody>' : '';
+    }).join('') : '';
+
     return `<tr style="${bg}">
       <td style="padding:8px 12px;font-size:13px;${fw};${pl}">${toggleBtn}${label}</td>
       <td style="padding:8px 12px;font-size:13px;${fw};text-align:right;white-space:nowrap">${fmt(val)}</td>
