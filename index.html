@@ -3182,7 +3182,8 @@ function dreBlank() {
     impostos:0, adquirentes:0, deducoesVendas:0,
     cmv:0, custoVendas:0, despComerciais:0, outrasDespVar:0,
     despAdmin:0, despPessoal:0, recFinanc:0, despFinanc:0,
-    recNaoOp:0, despNaoOp:0, investOp:0, investEst:0, emprestimos:0 };
+    recNaoOp:0, despNaoOp:0, investOp:0, investEst:0, emprestimos:0,
+    subs:{} };
 }
 function dreGetData(mes, ent) {
   return Object.assign(dreBlank(), _dreAll[mes]?.[ent] || {});
@@ -3250,34 +3251,49 @@ function dreParseXlsx(file, callback, onError) {
       const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
       const d    = dreBlank();
 
+      let currentParent = null; // rastreia o campo pai atual para subcategorias
+
       rows.forEach(row => {
         if (!row || row.length < 2) return;
         const cat = String(row[0] || '').trim();
         if (!cat || cat.length < 3) return;
-        if (cat === 'DRE' || cat === 'Categoria') return;
-        // Valor está na coluna B (índice 1) — despesas são negativas no pivot
+        if (cat === 'DRE' || cat === 'Categoria' || cat === 'Sem lançamentos') return;
+        // Ignorar linhas de grupo (XX format) e totalizadores (XXT format)
+        if (/^\d{2}[T ]/.test(cat)) { currentParent = null; return; }
+
         const rawVal = row[1];
         if (rawVal === null || rawVal === undefined || rawVal === '') return;
-        const val = Math.round(Math.abs(Number(rawVal)) * 100) / 100;
-        if (val === 0) return;
+        const signedVal = Math.round(Number(rawVal) * 100) / 100;
+        const val = Math.abs(signedVal);
         const c = cat.toLowerCase();
-        if      (c.includes('01t') || c.includes('receita bruta de vendas'))                          d.receitaBrutaSistema = val;
-        else if (c.includes('02.1') || c.includes('impostos sobre vendas'))                           d.impostos = val;
-        else if (c.includes('02.2') || c.includes('taxas de adquirentes'))                            d.adquirentes = val;
-        else if (c.includes('02.3') || c.includes('dedu') || c.includes('desconto'))                  d.deducoesVendas = val;
-        else if (c.includes('03.1') || c.includes('custo da mercadoria') || c.includes('custo de mercadoria')) d.cmv = val;
-        else if (c.includes('03.2') || c.includes('custo das vendas de'))                             d.custoVendas = val;
-        else if (c.includes('04.1') || c.includes('despesas comerciais') || c.includes('marketing'))  d.despComerciais = val;
-        else if (c.includes('04.2') || c.includes('outras despesas var'))                             d.outrasDespVar = val;
-        else if (c.includes('05.1') || c.includes('despesas administrat'))                            d.despAdmin = val;
-        else if (c.includes('05.2') || (c.includes('cmo') && !c.includes('custo')))                    d.despPessoal = val;
-        else if (c.includes('06.1') || c.includes('receitas e rendimentos') || c.includes('receitas financ')) d.recFinanc = val;
-        else if (c.includes('06.2') || c.includes('despesas financeiras'))                            d.despFinanc = val;
-        else if (c.includes('07.1') || c.includes('outras receitas n'))                               d.recNaoOp = val;
-        else if (c.includes('07.2') || c.includes('outras despesas n'))                               d.despNaoOp = val;
-        else if (c.includes('08.1') || c.includes('investimentos operacion'))                         d.investOp = val;
-        else if (c.includes('08.2') || c.includes('investimento estrateg'))                           d.investEst = val;
-        else if (c.includes('08.4') || c.includes('empréstimos e dívidas') || c.includes('emprestimos')) d.emprestimos = val;
+
+        let matchedField = null;
+        if      (c.includes('01t') || c.includes('receita bruta de vendas'))                          matchedField = 'receitaBrutaSistema';
+        else if (c.includes('02.1') || c.includes('impostos sobre vendas'))                           matchedField = 'impostos';
+        else if (c.includes('02.2') || c.includes('taxas de adquirentes'))                            matchedField = 'adquirentes';
+        else if (c.includes('02.3') || c.includes('dedu') || c.includes('desconto'))                  matchedField = 'deducoesVendas';
+        else if (c.includes('03.1') || c.includes('custo da mercadoria') || c.includes('custo de mercadoria')) matchedField = 'cmv';
+        else if (c.includes('03.2') || c.includes('custo das vendas de'))                             matchedField = 'custoVendas';
+        else if (c.includes('04.1') || c.includes('despesas comerciais') || c.includes('marketing'))  matchedField = 'despComerciais';
+        else if (c.includes('04.2') || c.includes('outras despesas var'))                             matchedField = 'outrasDespVar';
+        else if (c.includes('05.1') || c.includes('despesas administrat'))                            matchedField = 'despAdmin';
+        else if (c.includes('05.2') || (c.includes('cmo') && !c.includes('custo')))                   matchedField = 'despPessoal';
+        else if (c.includes('06.1') || c.includes('receitas e rendimentos') || c.includes('receitas financ')) matchedField = 'recFinanc';
+        else if (c.includes('06.2') || c.includes('despesas financeiras'))                            matchedField = 'despFinanc';
+        else if (c.includes('07.1') || c.includes('outras receitas n'))                               matchedField = 'recNaoOp';
+        else if (c.includes('07.2') || c.includes('outras despesas n'))                               matchedField = 'despNaoOp';
+        else if (c.includes('08.1') || c.includes('investimentos operacion'))                         matchedField = 'investOp';
+        else if (c.includes('08.2') || c.includes('investimento estrateg'))                           matchedField = 'investEst';
+        else if (c.includes('08.4') || c.includes('empréstimos e dívidas') || c.includes('emprestimos')) matchedField = 'emprestimos';
+
+        if (matchedField) {
+          if (val !== 0) d[matchedField] = val;
+          currentParent = matchedField;
+        } else if (currentParent && val !== 0) {
+          // É uma subcategoria do pai atual
+          if (!d.subs[currentParent]) d.subs[currentParent] = [];
+          d.subs[currentParent].push({ l: cat, v: signedVal });
+        }
       });
       callback(d);
     } catch(err) { if(onError) onError(err.message); else alert('Erro: '+err.message); }
@@ -3429,17 +3445,33 @@ function dreRenderResumo(el, d) {
   </tr>`;
 
   const row = (label,val,opts={}) => {
-    const {lv=2,orc=null,isP=false,sep=false}=opts;
+    const {lv=2,orc=null,isP=false,sep=false,field=null}=opts;
     if(sep) return `<tr><td colspan="4" style="height:1px;padding:0;background:var(--border)"></td></tr>`;
     const bg=lv===0?'background:var(--surface2)':lv===1?'background:rgba(0,0,0,.02)':'';
     const fw=lv<=1?'font-weight:700':'';
     const pl=lv===2?'padding-left:28px':lv===1?'padding-left:14px':'';
+    const subs = field && d.subs && d.subs[field] ? d.subs[field] : [];
+    const hasSubs = subs.length > 0;
+    const subId = field ? `subs-${field}-${_dreMes.replace('/','_')}` : null;
+    const toggleBtn = hasSubs ? `<span onclick="document.getElementById('${subId}').style.display=document.getElementById('${subId}').style.display==='none'?'':'none';this.textContent=this.textContent==='▶'?'▼':'▶'" style="cursor:pointer;font-size:9px;color:var(--muted);margin-right:6px;user-select:none">▼</span>` : '';
+    const subRows = hasSubs ? `<tbody id="${subId}">` + subs.map(s => {
+      const sv = s.v; // valor com sinal original do pivot
+      const neg = sv < 0;
+      const sfmt = `<span style="color:${neg?'#ef4444':'#22c55e'}">${neg?'-':''}R$ ${Math.abs(sv).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>`;
+      const spct = br ? `${((Math.abs(sv)/br)*100).toFixed(1)}%` : '—';
+      return `<tr style="background:rgba(0,0,0,.015)">
+        <td style="padding:5px 12px 5px 44px;font-size:12px;color:var(--muted)">${s.l}</td>
+        <td style="padding:5px 12px;font-size:12px;text-align:right;white-space:nowrap">${sfmt}</td>
+        <td style="padding:5px 12px;font-size:11px;color:var(--muted);text-align:right">${spct}</td>
+        <td></td>
+      </tr>`;
+    }).join('') + '</tbody>' : '';
     return `<tr style="${bg}">
-      <td style="padding:8px 12px;font-size:13px;${fw};${pl}">${label}</td>
+      <td style="padding:8px 12px;font-size:13px;${fw};${pl}">${toggleBtn}${label}</td>
       <td style="padding:8px 12px;font-size:13px;${fw};text-align:right;white-space:nowrap">${fmt(val)}</td>
       <td style="padding:8px 12px;font-size:12px;color:var(--muted);text-align:right">${val!==0?pct(val):''}</td>
       <td style="padding:8px 16px;text-align:right">${orc?orcBar(val,orc,isP):''}</td>
-    </tr>`;
+    </tr>${subRows}`;
   };
 
   el.innerHTML = `
@@ -3461,33 +3493,33 @@ function dreRenderResumo(el, d) {
         </tr></thead>
         <tbody>
           ${cat('Receitas')}
-          ${row('Receita Bruta de Vendas',c.rb,{lv:0})}
-          ${row('Impostos sobre Vendas',-d.impostos,{lv:2})}
-          ${row('Taxas de Adquirentes',-d.adquirentes,{lv:2,orc:'adquirentes'})}
-          ${row('Deduções de Vendas',-d.deducoesVendas,{lv:2})}
+          ${row('Receita Bruta de Vendas',c.rb,{lv:0,field:'receitaBrutaSistema'})}
+          ${row('Impostos sobre Vendas',-d.impostos,{lv:2,field:'impostos'})}
+          ${row('Taxas de Adquirentes',-d.adquirentes,{lv:2,orc:'adquirentes',field:'adquirentes'})}
+          ${row('Deduções de Vendas',-d.deducoesVendas,{lv:2,field:'deducoesVendas'})}
           ${row('= Receita Líquida',c.rl,{lv:1})}
           ${cat('Custos')}
-          ${row('CMV (Mercadoria)',-d.cmv,{lv:2,orc:'cmv'})}
-          ${row('Custo Vendas / Entregadores',-d.custoVendas,{lv:2})}
+          ${row('CMV (Mercadoria)',-d.cmv,{lv:2,orc:'cmv',field:'cmv'})}
+          ${row('Custo Vendas / Entregadores',-d.custoVendas,{lv:2,field:'custoVendas'})}
           ${row('= Lucro Bruto',c.lb,{lv:0})}
           ${cat('Despesas Variáveis')}
-          ${row('Despesas Comerciais (Marketing)',-d.despComerciais,{lv:2,orc:'despComerciais'})}
-          ${row('Outras Despesas Variáveis',-d.outrasDespVar,{lv:2})}
+          ${row('Despesas Comerciais (Marketing)',-d.despComerciais,{lv:2,orc:'despComerciais',field:'despComerciais'})}
+          ${row('Outras Despesas Variáveis',-d.outrasDespVar,{lv:2,field:'outrasDespVar'})}
           ${row('= Margem de Contribuição',c.mc,{lv:0})}
           ${cat('Despesas Fixas')}
-          ${row('Despesas Administrativas',-d.despAdmin,{lv:2,orc:'despAdmin'})}
-          ${row('Despesas com Pessoal (CMO)',-d.despPessoal,{lv:2,orc:'despPessoal'})}
+          ${row('Despesas Administrativas',-d.despAdmin,{lv:2,orc:'despAdmin',field:'despAdmin'})}
+          ${row('Despesas com Pessoal (CMO)',-d.despPessoal,{lv:2,orc:'despPessoal',field:'despPessoal'})}
           ${row('= Lucro / Prejuízo Operacional',c.lop,{lv:0})}
           ${cat('Resultado Financeiro')}
-          ${row('(+) Receitas Financeiras',d.recFinanc,{lv:2})}
-          ${row('(-) Despesas Financeiras',-d.despFinanc,{lv:2})}
-          ${row('(+) Receitas Não Operacionais',d.recNaoOp,{lv:2})}
-          ${row('(-) Despesas Não Operacionais',-d.despNaoOp,{lv:2})}
+          ${row('(+) Receitas Financeiras',d.recFinanc,{lv:2,field:'recFinanc'})}
+          ${row('(-) Despesas Financeiras',-d.despFinanc,{lv:2,field:'despFinanc'})}
+          ${row('(+) Receitas Não Operacionais',d.recNaoOp,{lv:2,field:'recNaoOp'})}
+          ${row('(-) Despesas Não Operacionais',-d.despNaoOp,{lv:2,field:'despNaoOp'})}
           ${row('= Lucro / Prejuízo Líquido',c.ll,{lv:0,orc:'lucroLiq',isP:true})}
           ${cat('Investimentos')}
-          ${row('Investimentos Operacionais',-d.investOp,{lv:2})}
-          ${row('Investimentos Estratégicos',-d.investEst,{lv:2})}
-          ${row('Empréstimos e Dívidas',-d.emprestimos,{lv:2})}
+          ${row('Investimentos Operacionais',-d.investOp,{lv:2,field:'investOp'})}
+          ${row('Investimentos Estratégicos',-d.investEst,{lv:2,field:'investEst'})}
+          ${row('Empréstimos e Dívidas',-d.emprestimos,{lv:2,field:'emprestimos'})}
           ${row('= Resultado Final (Caixa)',c.lf,{lv:0})}
         </tbody>
       </table>
