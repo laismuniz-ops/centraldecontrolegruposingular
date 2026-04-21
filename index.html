@@ -3450,25 +3450,34 @@ function dreRenderResumo(el, d) {
     </div>`;
   };
 
-  // ── FEATURE: Split Singular / Brisa nos KPIs ─────────────────────
+  // ── FEATURE: Split Singular / Brisa (ou Matriz / Filial) nos KPIs ──
   const isNovaMes = !DRE_MESES_MATRIZ_FILIAL.includes(_dreMes);
   const isConsolid = _dreEnt === 'Consolidado';
   let cS=null, cB=null;
-  if (isConsolid && isNovaMes) {
-    cS = dreCalc(dreGetData(_dreMes,'Singular'));
-    cB = dreCalc(dreGetData(_dreMes,'Brisa'));
+  // Labels dinâmicos: Mar+ → Singular/Brisa | Jan/Fev → Matriz/Filial
+  const splitLabelS = isNovaMes ? 'Singular' : 'Matriz';
+  const splitLabelB = isNovaMes ? 'Brisa'    : 'Filial';
+  if (isConsolid) {
+    if (isNovaMes) {
+      cS = dreCalc(dreGetData(_dreMes,'Singular'));
+      cB = dreCalc(dreGetData(_dreMes,'Brisa'));
+    } else {
+      // Jan/Fev Consolidado — mostra Matriz e Filial separados
+      if (dreTemDados(_dreMes,'Matriz')) cS = dreCalc(dreGetData(_dreMes,'Matriz'));
+      if (dreTemDados(_dreMes,'Filial')) cB = dreCalc(dreGetData(_dreMes,'Filial'));
+    }
   }
   const splitLine = (vS,vB) => {
-    if (!cS||!cB) return '';
+    if (!cS) return '';
     return `<div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">
       <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.05);border-radius:5px;padding:3px 7px">
-        <span style="font-size:10px;font-weight:700;color:#111">Singular</span>
+        <span style="font-size:10px;font-weight:700;color:#111">${splitLabelS}</span>
         <span style="font-size:12px;font-weight:800;color:#111">${fmtN(vS)}</span>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(5,150,105,.08);border-radius:5px;padding:3px 7px">
-        <span style="font-size:10px;font-weight:700;color:#059669">Brisa</span>
+      ${cB?`<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(5,150,105,.08);border-radius:5px;padding:3px 7px">
+        <span style="font-size:10px;font-weight:700;color:#059669">${splitLabelB}</span>
         <span style="font-size:12px;font-weight:800;color:#059669">${fmtN(vB)}</span>
-      </div>
+      </div>`:''}
     </div>`;
   };
 
@@ -3487,10 +3496,14 @@ function dreRenderResumo(el, d) {
     <td colspan="4" style="padding:10px 12px 4px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);border-top:1px solid var(--border)">${label}</td>
   </tr>`;
 
+  // Dados brutos das entidades para split no Consolidado
+  const rawS = (isConsolid && cS) ? dreGetData(_dreMes, isNovaMes ? 'Singular' : 'Matriz') : null;
+  const rawB = (isConsolid && cB) ? dreGetData(_dreMes, isNovaMes ? 'Brisa'    : 'Filial') : null;
+
   let _subToggleIdx = 0;
 
   const row = (label,val,opts={}) => {
-    const {lv=2,orc=null,isP=false,sep=false,field=null}=opts;
+    const {lv=2,orc=null,isP=false,sep=false,field=null,splitVS:_svs=undefined,splitVB:_svb=undefined}=opts;
     if(sep) return `<tr><td colspan="4" style="height:1px;padding:0;background:var(--border)"></td></tr>`;
     const bg=lv===0?'background:var(--surface2)':lv===1?'background:rgba(0,0,0,.02)':'';
     const fw=lv<=1?'font-weight:700':'';
@@ -3500,14 +3513,32 @@ function dreRenderResumo(el, d) {
     let _subsSource = d.subs;
     // Fallback APENAS para Consolidado — entidades individuais usam só seus próprios subs
     if (_dreEnt === 'Consolidado' && field && (!_subsSource || !_subsSource[field])) {
-      const isNovo = !DRE_MESES_MATRIZ_FILIAL.includes(_dreMes);
-      const fallbacks = isNovo ? ['Singular','Brisa'] : ['Matriz','Filial'];
+      const fallbacks = isNovaMes ? ['Singular','Brisa'] : ['Matriz','Filial'];
       for (const fb of fallbacks) {
         const fbSubs = _dreAll[_dreMes]?.[fb]?.subs;
         if (fbSubs && fbSubs[field]) { _subsSource = fbSubs; break; }
       }
     }
     const subs = (field && _subsSource && _subsSource[field]) ? _subsSource[field] : [];
+
+    // Split por entidade no Consolidado (linha abaixo de cada campo)
+    const sign = val < 0 ? -1 : 1;
+    const vS = _svs !== undefined ? _svs : (field && rawS ? sign * Math.abs(rawS[field] || 0) : null);
+    const vB = _svb !== undefined ? _svb : (field && rawB ? sign * Math.abs(rawB[field] || 0) : null);
+    const hasSplitRow = vS !== null && (Math.abs(vS||0) > 0 || Math.abs(vB||0) > 0);
+    const splitRowsHtml = hasSplitRow ? `
+      <tr style="background:rgba(0,0,0,.02)">
+        <td style="padding:2px 12px 2px 44px;font-size:11px;color:#444;font-weight:600">↳ ${splitLabelS}</td>
+        <td style="padding:2px 12px;font-size:11px;text-align:right;white-space:nowrap;color:#444">${fmt(vS)}</td>
+        <td style="padding:2px 12px;font-size:10px;text-align:right;color:var(--muted)">${vS&&vS!==0&&br?pct(vS):''}</td>
+        <td></td>
+      </tr>
+      ${vB!==null&&Math.abs(vB)>0?`<tr style="background:rgba(5,150,105,.025)">
+        <td style="padding:2px 12px 2px 44px;font-size:11px;color:#059669;font-weight:600">↳ ${splitLabelB}</td>
+        <td style="padding:2px 12px;font-size:11px;text-align:right;white-space:nowrap;color:#059669">${fmt(vB)}</td>
+        <td style="padding:2px 12px;font-size:10px;text-align:right;color:var(--muted)">${vB&&vB!==0&&br?pct(vB):''}</td>
+        <td></td>
+      </tr>`:''}` : '';
     const hasSubs = subs.length > 0;
     const grpId = hasSubs ? `dre-sub-${_subToggleIdx++}` : null;
 
@@ -3533,7 +3564,7 @@ function dreRenderResumo(el, d) {
       <td style="padding:8px 12px;font-size:13px;${fw};text-align:right;white-space:nowrap">${fmt(val)}</td>
       <td style="padding:8px 12px;font-size:12px;color:var(--muted);text-align:right">${val!==0?pct(val):''}</td>
       <td style="padding:8px 16px;text-align:right">${orc?orcBar(val,orc,isP):''}</td>
-    </tr>${subRows}`;
+    </tr>${splitRowsHtml}${subRows}`;
   };
 
   el.innerHTML = `
@@ -3559,34 +3590,34 @@ function dreRenderResumo(el, d) {
         </tr></thead>
         <tbody>
           ${cat('Receitas')}
-          ${row('Receita Bruta de Vendas',c.rb,{lv:0,field:'receitaBrutaSistema'})}
+          ${row('Receita Bruta de Vendas',c.rb,{lv:0,field:'receitaBrutaSistema',splitVS:cS?.rb,splitVB:cB?.rb})}
           ${row('Impostos sobre Vendas',-d.impostos,{lv:2,field:'impostos'})}
           ${row('Taxas de Adquirentes',-d.adquirentes,{lv:2,orc:'adquirentes',field:'adquirentes'})}
           ${row('Deduções de Vendas',-d.deducoesVendas,{lv:2,field:'deducoesVendas'})}
-          ${row('= Receita Líquida',c.rl,{lv:1})}
+          ${row('= Receita Líquida',c.rl,{lv:1,splitVS:cS?.rl,splitVB:cB?.rl})}
           ${cat('Custos')}
           ${row('CMV (Mercadoria)',-d.cmv,{lv:2,orc:'cmv',field:'cmv'})}
           ${row('Custo Vendas / Entregadores',-d.custoVendas,{lv:2,field:'custoVendas'})}
-          ${row('= Lucro Bruto',c.lb,{lv:0})}
+          ${row('= Lucro Bruto',c.lb,{lv:0,splitVS:cS?.lb,splitVB:cB?.lb})}
           ${cat('Despesas Variáveis')}
           ${row('Despesas Comerciais (Marketing)',-d.despComerciais,{lv:2,orc:'despComerciais',field:'despComerciais'})}
           ${row('Outras Despesas Variáveis',-d.outrasDespVar,{lv:2,field:'outrasDespVar'})}
-          ${row('= Margem de Contribuição',c.mc,{lv:0})}
+          ${row('= Margem de Contribuição',c.mc,{lv:0,splitVS:cS?.mc,splitVB:cB?.mc})}
           ${cat('Despesas Fixas')}
           ${row('Despesas Administrativas',-d.despAdmin,{lv:2,orc:'despAdmin',field:'despAdmin'})}
           ${row('Despesas com Pessoal (CMO)',-d.despPessoal,{lv:2,orc:'despPessoal',field:'despPessoal'})}
-          ${row('= Lucro / Prejuízo Operacional',c.lop,{lv:0})}
+          ${row('= Lucro / Prejuízo Operacional',c.lop,{lv:0,splitVS:cS?.lop,splitVB:cB?.lop})}
           ${cat('Resultado Financeiro')}
           ${row('(+) Receitas Financeiras',d.recFinanc,{lv:2,field:'recFinanc'})}
           ${row('(-) Despesas Financeiras',-d.despFinanc,{lv:2,field:'despFinanc'})}
           ${row('(+) Receitas Não Operacionais',d.recNaoOp,{lv:2,field:'recNaoOp'})}
           ${row('(-) Despesas Não Operacionais',-d.despNaoOp,{lv:2,field:'despNaoOp'})}
-          ${row('= Lucro / Prejuízo Líquido',c.ll,{lv:0,orc:'lucroLiq',isP:true})}
+          ${row('= Lucro / Prejuízo Líquido',c.ll,{lv:0,orc:'lucroLiq',isP:true,splitVS:cS?.ll,splitVB:cB?.ll})}
           ${cat('Investimentos')}
           ${row('Investimentos Operacionais',-d.investOp,{lv:2,field:'investOp'})}
           ${row('Investimentos Estratégicos',-d.investEst,{lv:2,field:'investEst'})}
           ${row('Empréstimos e Dívidas',-d.emprestimos,{lv:2,field:'emprestimos'})}
-          ${row('= Resultado Final (Caixa)',c.lf,{lv:0})}
+          ${row('= Resultado Final (Caixa)',c.lf,{lv:0,splitVS:cS?.lf,splitVB:cB?.lf})}
         </tbody>
       </table>
     </div>
