@@ -3446,7 +3446,7 @@ function dreRenderResumo(el, d) {
       <div style="background:var(--border);border-radius:4px;height:5px;overflow:hidden;margin-bottom:3px">
         <div style="width:${fillPct}%;background:${cor};height:100%;border-radius:4px;transition:width .3s"></div>
       </div>
-      <div style="font-size:10px;color:${cor};text-align:right;font-weight:700">${(rp*100).toFixed(1)}% <span style="color:var(--muted);font-weight:400">meta ${(orcV*100).toFixed(0)}%</span> <span style="background:${corBg};color:${cor};border-radius:3px;padding:0 3px">${sign}${diff}pp</span></div>
+      <div style="font-size:10px;color:${cor};text-align:right;font-weight:700">${(rp*100).toFixed(1)}% <span style="color:var(--muted);font-weight:400">${isP?'meta':'limite'} ${(orcV*100).toFixed(0)}%</span> <span style="background:${corBg};color:${cor};border-radius:3px;padding:0 3px">${sign}${diff}pp</span></div>
     </div>`;
   };
 
@@ -4175,7 +4175,7 @@ function dreRenderAnual(el) {
                 const color = ok ? '#16a34a' : '#dc2626';
                 return `<td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);opacity:${dimmed?.5:1}">
                   <div style="font-weight:700;color:${color}">${realPct.toFixed(1)}%</div>
-                  <div style="font-size:10px;color:var(--muted)">orc: ${orcPct.toFixed(0)}% <span style="color:${color}">${sign}${diff.toFixed(1)}pp</span></div>
+                  <div style="font-size:10px;color:var(--muted)">${isP?'meta':'limite'}: ${orcPct.toFixed(0)}% <span style="color:${color}">${sign}${diff.toFixed(1)}pp</span></div>
                 </td>`;
               };
               return ORC_CATS.map((cat,ri)=>{
