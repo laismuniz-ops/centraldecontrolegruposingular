@@ -3912,7 +3912,7 @@ function dreRenderAnual(el) {
 
   const calcMes = mes => {
     const isNovo = !DRE_MESES_MATRIZ_FILIAL.includes(mes);
-    let d, label, cS = null, cB = null;
+    let d, label, cS = null, cB = null, labelS, labelB;
     if (isNovo) {
       // Mar+ — Singular e Brisa separados
       const temS = dreTemDados(mes,'Singular'), temB = dreTemDados(mes,'Brisa');
@@ -3920,17 +3920,18 @@ function dreRenderAnual(el) {
       label = 'Consolidado';
       if (temS) cS = dreCalc(dreGetData(mes,'Singular'));
       if (temB) cB = dreCalc(dreGetData(mes,'Brisa'));
+      labelS = 'Singular'; labelB = 'Brisa';
     } else {
-      // Jan/Fev — Singular = Matriz; Brisa não existia (cB = null)
-      // Filial compõe o Consolidado mas não é mostrada como Brisa
+      // Jan/Fev — Consolidado = Matriz + Filial; abaixo mostra os dois separados
       const temFilial = dreTemDados(mes,'Filial');
       const temMatriz = dreTemDados(mes,'Matriz');
       d = temFilial ? dreConsolidado(mes) : dreGetData(mes,'Matriz');
       label = temFilial ? 'Consolidado' : 'Matriz';
-      if (temMatriz) cS = dreCalc(dreGetData(mes,'Matriz')); // Singular = Matriz
-      // cB permanece null — Brisa começa em março
+      if (temMatriz) cS = dreCalc(dreGetData(mes,'Matriz'));
+      if (temFilial) cB = dreCalc(dreGetData(mes,'Filial'));
+      labelS = 'Matriz'; labelB = 'Filial';
     }
-    return { mes, c: dreCalc(d), d, label, cS, cB };
+    return { mes, c: dreCalc(d), d, label, cS, cB, labelS, labelB };
   };
   const dados    = mesesComDados.map(calcMes);
   const dadosFlt = mesesAtivos.map(calcMes);
@@ -4023,7 +4024,7 @@ function dreRenderAnual(el) {
           <th style="padding:10px 14px;font-size:11px;text-align:right;text-transform:uppercase;letter-spacing:.08em">Resultado</th>
         </tr></thead>
         <tbody>
-          ${dados.map(({mes,c,label,cS,cB})=>{
+          ${dados.map(({mes,c,label,cS,cB,labelS,labelB})=>{
             const hasS = !!cS, hasB = !!cB;
             const td = (v,extra='',bold=false,col='') =>
               `<td style="padding:10px 12px;font-size:13px;text-align:right;${bold?'font-weight:600;':''}${col?'color:'+col+';':''}">${fmtN(v)}${extra}</td>`;
@@ -4039,7 +4040,7 @@ function dreRenderAnual(el) {
               <td style="padding:10px 14px;font-size:13px;text-align:right;font-weight:700;color:${clr(c.lf)}">${fmtN(c.lf)}${sub(c.lf,c.rb)}</td>
             </tr>`;
             const singRow = hasS ? `<tr style="background:rgba(0,0,0,.025);border-bottom:${hasB?'none':'1px solid var(--border)'}">
-              <td style="padding:4px 14px 4px 26px;font-size:11px;font-weight:700;color:#111">▸ Singular</td>
+              <td style="padding:4px 14px 4px 26px;font-size:11px;font-weight:700;color:#111">▸ ${labelS}</td>
               <td style="padding:4px 12px;font-size:11px;text-align:right;color:#111;font-weight:600">${fmtN(cS.rb)}</td>
               <td style="padding:4px 12px;font-size:11px;text-align:right;color:#111">${fmtN(cS.rl)}</td>
               <td style="padding:4px 12px;font-size:11px;text-align:right;color:${clr(cS.lb)}">${fmtN(cS.lb)}</td>
@@ -4049,7 +4050,7 @@ function dreRenderAnual(el) {
               <td style="padding:4px 14px;font-size:11px;text-align:right;font-weight:700;color:${clr(cS.lf)}">${fmtN(cS.lf)}</td>
             </tr>` : '';
             const brisRow = hasB ? `<tr style="background:rgba(5,150,105,.04);border-bottom:1px solid var(--border)">
-              <td style="padding:4px 14px 6px 26px;font-size:11px;font-weight:700;color:#059669">▸ Brisa</td>
+              <td style="padding:4px 14px 6px 26px;font-size:11px;font-weight:700;color:#059669">▸ ${labelB}</td>
               <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:#059669;font-weight:600">${fmtN(cB.rb)}</td>
               <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:#059669">${fmtN(cB.rl)}</td>
               <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:${clr(cB.lb)}">${fmtN(cB.lb)}</td>
