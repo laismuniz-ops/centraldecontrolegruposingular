@@ -3453,13 +3453,13 @@ function dreRenderResumo(el, d) {
   const splitLine = (vS,vB) => {
     if (!cS||!cB) return '';
     return `<div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">
-      <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(167,139,250,.08);border-radius:5px;padding:3px 7px">
-        <span style="font-size:10px;font-weight:700;color:#a78bfa">Singular</span>
-        <span style="font-size:12px;font-weight:800;color:#a78bfa">${fmtN(vS)}</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.05);border-radius:5px;padding:3px 7px">
+        <span style="font-size:10px;font-weight:700;color:#111">Singular</span>
+        <span style="font-size:12px;font-weight:800;color:#111">${fmtN(vS)}</span>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(52,211,153,.08);border-radius:5px;padding:3px 7px">
-        <span style="font-size:10px;font-weight:700;color:#34d399">Brisa</span>
-        <span style="font-size:12px;font-weight:800;color:#34d399">${fmtN(vB)}</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(5,150,105,.08);border-radius:5px;padding:3px 7px">
+        <span style="font-size:10px;font-weight:700;color:#059669">Brisa</span>
+        <span style="font-size:12px;font-weight:800;color:#059669">${fmtN(vB)}</span>
       </div>
     </div>`;
   };
@@ -3488,8 +3488,18 @@ function dreRenderResumo(el, d) {
     const fw=lv<=1?'font-weight:700':'';
     const pl=lv===2?'padding-left:28px':lv===1?'padding-left:14px':'';
 
-    // Subcategorias do pivot (todos os meses)
-    const subs = (field && d.subs && d.subs[field]) ? d.subs[field] : [];
+    // Subcategorias do pivot (todos os meses e entidades)
+    let _subsSource = d.subs;
+    if (field && (!_subsSource || !_subsSource[field])) {
+      // Consolidado não tem subs diretas — busca de Singular, Brisa, Matriz ou Filial
+      const isNovo = !DRE_MESES_MATRIZ_FILIAL.includes(_dreMes);
+      const fallbacks = isNovo ? ['Singular','Brisa'] : ['Matriz','Filial'];
+      for (const fb of fallbacks) {
+        const fbSubs = _dreAll[_dreMes]?.[fb]?.subs;
+        if (fbSubs && fbSubs[field]) { _subsSource = fbSubs; break; }
+      }
+    }
+    const subs = (field && _subsSource && _subsSource[field]) ? _subsSource[field] : [];
     const hasSubs = subs.length > 0;
     const grpId = hasSubs ? `dre-sub-${_subToggleIdx++}` : null;
 
@@ -3899,13 +3909,13 @@ function dreRenderAnual(el) {
   const pp   = (v,b) => b>0?((v/b)*100).toFixed(1)+'%':'—';
   const splitAnual = (vS,vB) => hasSplit ? `
     <div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">
-      <div style="display:flex;justify-content:space-between;background:rgba(167,139,250,.08);border-radius:5px;padding:3px 7px">
-        <span style="font-size:10px;font-weight:700;color:#a78bfa">Singular</span>
-        <span style="font-size:12px;font-weight:800;color:#a78bfa">${fmtN(vS)}</span>
+      <div style="display:flex;justify-content:space-between;background:rgba(0,0,0,.05);border-radius:5px;padding:3px 7px">
+        <span style="font-size:10px;font-weight:700;color:#111">Singular</span>
+        <span style="font-size:12px;font-weight:800;color:#111">${fmtN(vS)}</span>
       </div>
-      <div style="display:flex;justify-content:space-between;background:rgba(52,211,153,.08);border-radius:5px;padding:3px 7px">
-        <span style="font-size:10px;font-weight:700;color:#34d399">Brisa</span>
-        <span style="font-size:12px;font-weight:800;color:#34d399">${fmtN(vB)}</span>
+      <div style="display:flex;justify-content:space-between;background:rgba(5,150,105,.08);border-radius:5px;padding:3px 7px">
+        <span style="font-size:10px;font-weight:700;color:#059669">Brisa</span>
+        <span style="font-size:12px;font-weight:800;color:#059669">${fmtN(vB)}</span>
       </div>
     </div>` : '';
 
@@ -3962,20 +3972,45 @@ function dreRenderAnual(el) {
         </tr></thead>
         <tbody>
           ${dados.map(({mes,c,label,cS,cB})=>{
-            const sbLine = (vS,vB) => (cS||cB) ? `<br><span style="font-size:9px;font-weight:400"><span style="color:#a78bfa">S:${fmtN(vS||0)}</span> <span style="color:#34d399">B:${fmtN(vB||0)}</span></span>` : '';
-            return `<tr style="cursor:pointer;border-bottom:1px solid var(--border)" onclick="_dreMes='${mes}';_dreTab='resumo';dreRender()" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+            const hasS = !!cS, hasB = !!cB;
+            const td = (v,extra='',bold=false,col='') =>
+              `<td style="padding:10px 12px;font-size:13px;text-align:right;${bold?'font-weight:600;':''}${col?'color:'+col+';':''}">${fmtN(v)}${extra}</td>`;
+            const sub = (v,base) => base>0?`<br><span style="font-size:10px;color:var(--muted);font-weight:400">${pp(v,base)}</span>`:'';
+            const mainRow = `<tr style="cursor:pointer;border-bottom:${(hasS||hasB)?'none':'1px solid var(--border)'}" onclick="_dreMes='${mes}';_dreTab='resumo';dreRender()" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
               <td style="padding:10px 14px;font-size:13px;font-weight:600">${mes.replace('/2026','')}<span style="font-size:10px;color:var(--muted);margin-left:6px;font-weight:400">${label}</span></td>
-              <td style="padding:10px 12px;font-size:13px;text-align:right">${fmtN(c.rb)}${sbLine(cS?.rb,cB?.rb)}</td>
-              <td style="padding:10px 12px;font-size:13px;text-align:right">${fmtN(c.rl)}${sbLine(cS?.rl,cB?.rl)}<br><span style="font-size:10px;color:var(--muted);font-weight:400">${pp(c.rl,c.rb)}</span></td>
-              <td style="padding:10px 12px;font-size:13px;text-align:right;font-weight:600;color:${clr(c.lb)}">${fmtN(c.lb)}${sbLine(cS?.lb,cB?.lb)}<br><span style="font-size:10px;font-weight:400;color:var(--muted)">${pp(c.lb,c.rb)}</span></td>
+              ${td(c.rb)}
+              ${td(c.rl,sub(c.rl,c.rb))}
+              ${td(c.lb,sub(c.lb,c.rb),true,clr(c.lb))}
               <td style="padding:10px 12px;font-size:13px;text-align:right">${(c.mcPct*100).toFixed(1)}%</td>
-              <td style="padding:10px 12px;font-size:13px;text-align:right;font-weight:600;color:${clr(c.lop)}">${fmtN(c.lop)}${sbLine(cS?.lop,cB?.lop)}<br><span style="font-size:10px;font-weight:400;color:var(--muted)">${pp(c.lop,c.rb)}</span></td>
-              <td style="padding:10px 12px;font-size:13px;text-align:right;font-weight:600;color:${clr(c.ll)}">${fmtN(c.ll)}${sbLine(cS?.ll,cB?.ll)}<br><span style="font-size:10px;font-weight:400;color:var(--muted)">${pp(c.ll,c.rb)}</span></td>
-              <td style="padding:10px 14px;font-size:13px;text-align:right;font-weight:700;color:${clr(c.lf)}">${fmtN(c.lf)}${sbLine(cS?.lf,cB?.lf)}<br><span style="font-size:10px;font-weight:400;color:var(--muted)">${pp(c.lf,c.rb)}</span></td>
-            </tr>`;}).join('')}
+              ${td(c.lop,sub(c.lop,c.rb),true,clr(c.lop))}
+              ${td(c.ll,sub(c.ll,c.rb),true,clr(c.ll))}
+              <td style="padding:10px 14px;font-size:13px;text-align:right;font-weight:700;color:${clr(c.lf)}">${fmtN(c.lf)}${sub(c.lf,c.rb)}</td>
+            </tr>`;
+            const singRow = hasS ? `<tr style="background:rgba(0,0,0,.025);border-bottom:${hasB?'none':'1px solid var(--border)'}">
+              <td style="padding:4px 14px 4px 26px;font-size:11px;font-weight:700;color:#111">▸ Singular</td>
+              <td style="padding:4px 12px;font-size:11px;text-align:right;color:#111;font-weight:600">${fmtN(cS.rb)}</td>
+              <td style="padding:4px 12px;font-size:11px;text-align:right;color:#111">${fmtN(cS.rl)}</td>
+              <td style="padding:4px 12px;font-size:11px;text-align:right;color:${clr(cS.lb)}">${fmtN(cS.lb)}</td>
+              <td style="padding:4px 12px;font-size:11px;text-align:right;color:var(--muted)">${(cS.mcPct*100).toFixed(1)}%</td>
+              <td style="padding:4px 12px;font-size:11px;text-align:right;color:${clr(cS.lop)}">${fmtN(cS.lop)}</td>
+              <td style="padding:4px 12px;font-size:11px;text-align:right;color:${clr(cS.ll)}">${fmtN(cS.ll)}</td>
+              <td style="padding:4px 14px;font-size:11px;text-align:right;font-weight:700;color:${clr(cS.lf)}">${fmtN(cS.lf)}</td>
+            </tr>` : '';
+            const brisRow = hasB ? `<tr style="background:rgba(5,150,105,.04);border-bottom:1px solid var(--border)">
+              <td style="padding:4px 14px 6px 26px;font-size:11px;font-weight:700;color:#059669">▸ Brisa</td>
+              <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:#059669;font-weight:600">${fmtN(cB.rb)}</td>
+              <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:#059669">${fmtN(cB.rl)}</td>
+              <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:${clr(cB.lb)}">${fmtN(cB.lb)}</td>
+              <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:var(--muted)">${(cB.mcPct*100).toFixed(1)}%</td>
+              <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:${clr(cB.lop)}">${fmtN(cB.lop)}</td>
+              <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:${clr(cB.ll)}">${fmtN(cB.ll)}</td>
+              <td style="padding:4px 14px 6px;font-size:11px;text-align:right;font-weight:700;color:${clr(cB.lf)}">${fmtN(cB.lf)}</td>
+            </tr>` : '';
+            return mainRow + singRow + brisRow;
+          }).join('')}
           <tr style="background:var(--surface2);font-weight:800;border-top:2px solid #111">
             <td style="padding:10px 14px;font-size:13px">TOTAL ${mesesComDados.length}M</td>
-            <td style="padding:10px 12px;font-size:13px;text-align:right">R$ ${totRb.toLocaleString('pt-BR',{minimumFractionDigits:0})}</td>
+            <td style="padding:10px 12px;font-size:13px;text-align:right">${fmtN(totRb)}</td>
             <td style="padding:10px 12px;font-size:13px;text-align:right">${fmtN(totRl)}<br><span style="font-size:10px;font-weight:400;color:var(--muted)">${pp(totRl,totRb)}</span></td>
             <td style="padding:10px 12px;font-size:13px;text-align:right;color:${clr(totLb)}">${fmtN(totLb)}<br><span style="font-size:10px;font-weight:400;color:var(--muted)">${pp(totLb,totRb)}</span></td>
             <td style="padding:10px 12px;font-size:13px;text-align:right">${(totMcPct*100).toFixed(1)}%</td>
@@ -3983,6 +4018,26 @@ function dreRenderAnual(el) {
             <td style="padding:10px 12px;font-size:13px;text-align:right;color:${clr(totLl)}">${fmtN(totLl)}<br><span style="font-size:10px;font-weight:400;color:var(--muted)">${pp(totLl,totRb)}</span></td>
             <td style="padding:10px 14px;font-size:13px;text-align:right;color:${clr(totLf)}">${fmtN(totLf)}<br><span style="font-size:10px;font-weight:400;color:var(--muted)">${pp(totLf,totRb)}</span></td>
           </tr>
+          ${hasSplit?`<tr style="background:rgba(0,0,0,.04)">
+            <td style="padding:5px 14px 5px 26px;font-size:11px;font-weight:700;color:#111">▸ Singular (total)</td>
+            <td style="padding:5px 12px;font-size:11px;text-align:right;font-weight:700;color:#111">${fmtN(totSrb)}</td>
+            <td style="padding:5px 12px;font-size:11px;text-align:right;color:#111">${fmtN(totSrl)}</td>
+            <td style="padding:5px 12px;font-size:11px;text-align:right;color:${clr(totSlb)}">${fmtN(totSlb)}</td>
+            <td style="padding:5px 12px;font-size:11px;text-align:right;color:var(--muted)">${totSrb>0?((totSmc/totSrb)*100).toFixed(1)+'%':'—'}</td>
+            <td style="padding:5px 12px;font-size:11px;text-align:right;color:${clr(totSlop)}">${fmtN(totSlop)}</td>
+            <td style="padding:5px 12px;font-size:11px;text-align:right;color:${clr(totSll)}">${fmtN(totSll)}</td>
+            <td style="padding:5px 14px;font-size:11px;text-align:right;font-weight:700;color:${clr(totSlf)}">${fmtN(totSlf)}</td>
+          </tr>
+          <tr style="background:rgba(5,150,105,.04)">
+            <td style="padding:5px 14px 6px 26px;font-size:11px;font-weight:700;color:#059669">▸ Brisa (total)</td>
+            <td style="padding:5px 12px 6px;font-size:11px;text-align:right;font-weight:700;color:#059669">${fmtN(totBrb)}</td>
+            <td style="padding:5px 12px 6px;font-size:11px;text-align:right;color:#059669">${fmtN(totBrl)}</td>
+            <td style="padding:5px 12px 6px;font-size:11px;text-align:right;color:${clr(totBlb)}">${fmtN(totBlb)}</td>
+            <td style="padding:5px 12px 6px;font-size:11px;text-align:right;color:var(--muted)">${totBrb>0?((totBmc/totBrb)*100).toFixed(1)+'%':'—'}</td>
+            <td style="padding:5px 12px 6px;font-size:11px;text-align:right;color:${clr(totBlop)}">${fmtN(totBlop)}</td>
+            <td style="padding:5px 12px 6px;font-size:11px;text-align:right;color:${clr(totBll)}">${fmtN(totBll)}</td>
+            <td style="padding:5px 14px 6px;font-size:11px;text-align:right;font-weight:700;color:${clr(totBlf)}">${fmtN(totBlf)}</td>
+          </tr>`:''}
         </tbody>
       </table>
     </div>
