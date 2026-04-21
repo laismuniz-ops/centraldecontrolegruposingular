@@ -3462,9 +3462,9 @@ function dreRenderResumo(el, d) {
       cS = dreCalc(dreGetData(_dreMes,'Singular'));
       cB = dreCalc(dreGetData(_dreMes,'Brisa'));
     } else {
-      // Jan/Fev Consolidado — mostra Matriz e Filial separados
-      if (dreTemDados(_dreMes,'Matriz')) cS = dreCalc(dreGetData(_dreMes,'Matriz'));
-      if (dreTemDados(_dreMes,'Filial')) cB = dreCalc(dreGetData(_dreMes,'Filial'));
+      // Jan/Fev Consolidado — Singular = Consolidado (Matriz+Filial), sem Brisa
+      cS = dreCalc(d); // d já é o Consolidado (Matriz+Filial)
+      cB = null;       // Filial NÃO é Brisa
     }
   }
   const splitLine = (vS,vB) => {
@@ -3496,9 +3496,14 @@ function dreRenderResumo(el, d) {
     <td colspan="4" style="padding:10px 12px 4px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);border-top:1px solid var(--border)">${label}</td>
   </tr>`;
 
-  // Dados brutos das entidades para split no Consolidado
+  // Dados brutos das entidades para split no Consolidado (sub-rows da tabela)
   const rawS = (isConsolid && cS) ? dreGetData(_dreMes, isNovaMes ? 'Singular' : 'Matriz') : null;
-  const rawB = (isConsolid && cB) ? dreGetData(_dreMes, isNovaMes ? 'Brisa'    : 'Filial') : null;
+  // Jan/Fev: rawB = Filial (para mostrar ↳ Filial na tabela mesmo que cB=null no KPI)
+  const rawB = isConsolid
+    ? (isNovaMes
+        ? (cB ? dreGetData(_dreMes,'Brisa') : null)
+        : (dreTemDados(_dreMes,'Filial') ? dreGetData(_dreMes,'Filial') : null))
+    : null;
 
   let _subToggleIdx = 0;
 
@@ -3943,7 +3948,7 @@ function dreRenderAnual(el) {
 
   const calcMes = mes => {
     const isNovo = !DRE_MESES_MATRIZ_FILIAL.includes(mes);
-    let d, label, cS = null, cB = null, labelS, labelB;
+    let d, label, cS = null, cB = null, labelS, labelB, cMatriz = null, cFilial = null;
     if (isNovo) {
       // Mar+ — Singular e Brisa separados
       const temS = dreTemDados(mes,'Singular'), temB = dreTemDados(mes,'Brisa');
@@ -3953,16 +3958,19 @@ function dreRenderAnual(el) {
       if (temB) cB = dreCalc(dreGetData(mes,'Brisa'));
       labelS = 'Singular'; labelB = 'Brisa';
     } else {
-      // Jan/Fev — Consolidado = Matriz + Filial; abaixo mostra os dois separados
+      // Jan/Fev — Singular = Consolidado (Matriz+Filial); Brisa não existia neste período
       const temFilial = dreTemDados(mes,'Filial');
       const temMatriz = dreTemDados(mes,'Matriz');
       d = temFilial ? dreConsolidado(mes) : dreGetData(mes,'Matriz');
       label = temFilial ? 'Consolidado' : 'Matriz';
-      if (temMatriz) cS = dreCalc(dreGetData(mes,'Matriz'));
-      if (temFilial) cB = dreCalc(dreGetData(mes,'Filial'));
-      labelS = 'Matriz'; labelB = 'Filial';
+      cS = dreCalc(d); // Singular = Consolidado (Matriz+Filial juntos)
+      cB = null;       // Brisa não existia em Jan/Fev
+      labelS = 'Singular'; labelB = null;
+      // Sub-rows da tabela: breakdown Matriz / Filial separados
+      if (temMatriz) cMatriz = dreCalc(dreGetData(mes,'Matriz'));
+      if (temFilial) cFilial  = dreCalc(dreGetData(mes,'Filial'));
     }
-    return { mes, c: dreCalc(d), d, label, cS, cB, labelS, labelB };
+    return { mes, c: dreCalc(d), d, label, cS, cB, labelS, labelB, cMatriz, cFilial };
   };
   const dados    = mesesComDados.map(calcMes);
   const dadosFlt = mesesAtivos.map(calcMes);
@@ -4055,12 +4063,18 @@ function dreRenderAnual(el) {
           <th style="padding:10px 14px;font-size:11px;text-align:right;text-transform:uppercase;letter-spacing:.08em">Resultado</th>
         </tr></thead>
         <tbody>
-          ${dados.map(({mes,c,label,cS,cB,labelS,labelB})=>{
-            const hasS = !!cS, hasB = !!cB;
+          ${dados.map(({mes,c,label,cS,cB,labelS,labelB,cMatriz,cFilial})=>{
+            // Jan/Fev: sub-rows = Matriz + Filial (breakdown); Mar+: sub-rows = Singular + Brisa
+            const isOld = DRE_MESES_MATRIZ_FILIAL.includes(mes);
+            const rowA = isOld ? cMatriz : cS;   // linha "superior" (Matriz ou Singular)
+            const rowB = isOld ? cFilial  : cB;   // linha "inferior" (Filial ou Brisa)
+            const lA   = isOld ? 'Matriz'  : (labelS||'Singular');
+            const lB   = isOld ? 'Filial'  : (labelB||'Brisa');
+            const hasA = !!rowA, hasB2 = !!rowB;
             const td = (v,extra='',bold=false,col='') =>
               `<td style="padding:10px 12px;font-size:13px;text-align:right;${bold?'font-weight:600;':''}${col?'color:'+col+';':''}">${fmtN(v)}${extra}</td>`;
             const sub = (v,base) => base>0?`<br><span style="font-size:10px;color:var(--muted);font-weight:400">${pp(v,base)}</span>`:'';
-            const mainRow = `<tr style="cursor:pointer;border-bottom:${(hasS||hasB)?'none':'1px solid var(--border)'}" onclick="_dreMes='${mes}';_dreTab='resumo';dreRender()" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+            const mainRow = `<tr style="cursor:pointer;border-bottom:${(hasA||hasB2)?'none':'1px solid var(--border)'}" onclick="_dreMes='${mes}';_dreTab='resumo';dreRender()" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
               <td style="padding:10px 14px;font-size:13px;font-weight:600">${mes.replace('/2026','')}<span style="font-size:10px;color:var(--muted);margin-left:6px;font-weight:400">${label}</span></td>
               ${td(c.rb)}
               ${td(c.rl,sub(c.rl,c.rb))}
@@ -4070,25 +4084,25 @@ function dreRenderAnual(el) {
               ${td(c.ll,sub(c.ll,c.rb),true,clr(c.ll))}
               <td style="padding:10px 14px;font-size:13px;text-align:right;font-weight:700;color:${clr(c.lf)}">${fmtN(c.lf)}${sub(c.lf,c.rb)}</td>
             </tr>`;
-            const singRow = hasS ? `<tr style="background:rgba(0,0,0,.025);border-bottom:${hasB?'none':'1px solid var(--border)'}">
-              <td style="padding:4px 14px 4px 26px;font-size:11px;font-weight:700;color:#111">▸ ${labelS}</td>
-              <td style="padding:4px 12px;font-size:11px;text-align:right;color:#111;font-weight:600">${fmtN(cS.rb)}</td>
-              <td style="padding:4px 12px;font-size:11px;text-align:right;color:#111">${fmtN(cS.rl)}</td>
-              <td style="padding:4px 12px;font-size:11px;text-align:right;color:${clr(cS.lb)}">${fmtN(cS.lb)}</td>
-              <td style="padding:4px 12px;font-size:11px;text-align:right;color:var(--muted)">${(cS.mcPct*100).toFixed(1)}%</td>
-              <td style="padding:4px 12px;font-size:11px;text-align:right;color:${clr(cS.lop)}">${fmtN(cS.lop)}</td>
-              <td style="padding:4px 12px;font-size:11px;text-align:right;color:${clr(cS.ll)}">${fmtN(cS.ll)}</td>
-              <td style="padding:4px 14px;font-size:11px;text-align:right;font-weight:700;color:${clr(cS.lf)}">${fmtN(cS.lf)}</td>
+            const singRow = hasA ? `<tr style="background:rgba(0,0,0,.025);border-bottom:${hasB2?'none':'1px solid var(--border)'}">
+              <td style="padding:4px 14px 4px 26px;font-size:11px;font-weight:700;color:#111">▸ ${lA}</td>
+              <td style="padding:4px 12px;font-size:11px;text-align:right;color:#111;font-weight:600">${fmtN(rowA.rb)}</td>
+              <td style="padding:4px 12px;font-size:11px;text-align:right;color:#111">${fmtN(rowA.rl)}</td>
+              <td style="padding:4px 12px;font-size:11px;text-align:right;color:${clr(rowA.lb)}">${fmtN(rowA.lb)}</td>
+              <td style="padding:4px 12px;font-size:11px;text-align:right;color:var(--muted)">${(rowA.mcPct*100).toFixed(1)}%</td>
+              <td style="padding:4px 12px;font-size:11px;text-align:right;color:${clr(rowA.lop)}">${fmtN(rowA.lop)}</td>
+              <td style="padding:4px 12px;font-size:11px;text-align:right;color:${clr(rowA.ll)}">${fmtN(rowA.ll)}</td>
+              <td style="padding:4px 14px;font-size:11px;text-align:right;font-weight:700;color:${clr(rowA.lf)}">${fmtN(rowA.lf)}</td>
             </tr>` : '';
-            const brisRow = hasB ? `<tr style="background:rgba(5,150,105,.04);border-bottom:1px solid var(--border)">
-              <td style="padding:4px 14px 6px 26px;font-size:11px;font-weight:700;color:#059669">▸ ${labelB}</td>
-              <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:#059669;font-weight:600">${fmtN(cB.rb)}</td>
-              <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:#059669">${fmtN(cB.rl)}</td>
-              <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:${clr(cB.lb)}">${fmtN(cB.lb)}</td>
-              <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:var(--muted)">${(cB.mcPct*100).toFixed(1)}%</td>
-              <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:${clr(cB.lop)}">${fmtN(cB.lop)}</td>
-              <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:${clr(cB.ll)}">${fmtN(cB.ll)}</td>
-              <td style="padding:4px 14px 6px;font-size:11px;text-align:right;font-weight:700;color:${clr(cB.lf)}">${fmtN(cB.lf)}</td>
+            const brisRow = hasB2 ? `<tr style="background:${isOld?'rgba(0,0,0,.015)':'rgba(5,150,105,.04)'};border-bottom:1px solid var(--border)">
+              <td style="padding:4px 14px 6px 26px;font-size:11px;font-weight:700;color:${isOld?'#555':'#059669'}">▸ ${lB}</td>
+              <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:${isOld?'#555':'#059669'};font-weight:600">${fmtN(rowB.rb)}</td>
+              <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:${isOld?'#555':'#059669'}">${fmtN(rowB.rl)}</td>
+              <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:${clr(rowB.lb)}">${fmtN(rowB.lb)}</td>
+              <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:var(--muted)">${(rowB.mcPct*100).toFixed(1)}%</td>
+              <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:${clr(rowB.lop)}">${fmtN(rowB.lop)}</td>
+              <td style="padding:4px 12px 6px;font-size:11px;text-align:right;color:${clr(rowB.ll)}">${fmtN(rowB.ll)}</td>
+              <td style="padding:4px 14px 6px;font-size:11px;text-align:right;font-weight:700;color:${clr(rowB.lf)}">${fmtN(rowB.lf)}</td>
             </tr>` : '';
             return mainRow + singRow + brisRow;
           }).join('')}
