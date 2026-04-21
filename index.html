@@ -3145,6 +3145,17 @@ let _dreTab      = 'resumo';      // 'resumo' | 'lancar' | 'orcamentos' | 'ia'
 let _dreAnualTab    = 'resumo';   // 'resumo' | 'ia'
 let _dreAnualFiltro = null;       // null = todos; Set de meses selecionados
 let _dreAll         = {};         // { 'Jan/2026': { 'Matriz': {...}, 'Filial': {...} }, 'Mar/2026': { 'Singular': {...}, 'Brisa': {...} } }
+let _dreImportSubs  = {};         // subs temporárias do último pivot importado
+
+// Toggle para subcategorias do DRE
+function dreToggleSub(id) {
+  var els = document.querySelectorAll('[data-grp="' + id + '"]');
+  if (!els.length) return;
+  var open = els[0].style.display !== 'none';
+  els.forEach(function(r) { r.style.display = open ? 'none' : ''; });
+  var btn = document.getElementById('btn-' + id);
+  if (btn) btn.textContent = open ? '▶' : '▼';
+}
 
 const DRE_MESES_FILIAL = ['Jan/2026','Fev/2026']; // meses que têm dados de Filial (legado)
 
@@ -3461,7 +3472,7 @@ function dreRenderResumo(el, d) {
     const grpId = hasSubs ? `dre-sub-${_subToggleIdx++}` : null;
 
     const toggleBtn = hasSubs
-      ? `<span id="btn-${grpId}" onclick="(function(id){var els=document.querySelectorAll('[data-grp=\\''+id+'\\']'),open=els[0].style.display!=='none';els.forEach(function(r){r.style.display=open?'none':'';});document.getElementById('btn-'+id).textContent=open?'▶':'▼';}('${grpId}'))" style="cursor:pointer;font-size:9px;color:var(--muted);margin-right:5px;user-select:none">▼</span>`
+      ? `<span id="btn-${grpId}" onclick="dreToggleSub('${grpId}')" style="cursor:pointer;font-size:9px;color:var(--muted);margin-right:5px;user-select:none">▼</span>`
       : '';
 
     const subRows = hasSubs ? subs.map(s => {
@@ -3645,6 +3656,8 @@ function dreImportarPivot(file) {
   showStatus('⏳ Lendo arquivo…', '#f59e0b');
 
   dreParseXlsx(file, d => {
+    // Guarda as subcategorias para salvar junto com o formulário
+    _dreImportSubs = d.subs || {};
     const set = (id,v) => { const el=document.getElementById('dre-inp-'+id); if(el&&v!==0) el.value=v; };
     set('receitaBrutaSistema',d.receitaBrutaSistema); set('impostos',d.impostos);
     set('adquirentes',d.adquirentes); set('deducoesVendas',d.deducoesVendas);
@@ -3675,13 +3688,18 @@ function dreSalvarForm() {
   const g  = id => parseFloat(document.getElementById('dre-inp-'+id)?.value||0)||0;
   const gN = id => { const v=document.getElementById('dre-inp-'+id)?.value; return(v===''||v==null)?null:parseFloat(v)||0; };
   if(!_dreAll[_dreMes]) _dreAll[_dreMes]={};
+  // Preserva subs existentes se não houver nova importação
+  const existingSubs = _dreAll[_dreMes]?.[_dreEnt]?.subs || {};
+  const subsToSave = Object.keys(_dreImportSubs).length > 0 ? _dreImportSubs : existingSubs;
   _dreAll[_dreMes][_dreEnt] = {
     receitaBrutaSistema:g('receitaBrutaSistema'), receitaBrutaCorrigida:gN('receitaBrutaCorrigida'),
     impostos:g('impostos'), adquirentes:g('adquirentes'), deducoesVendas:g('deducoesVendas'),
     cmv:g('cmv'), custoVendas:g('custoVendas'), despComerciais:g('despComerciais'), outrasDespVar:g('outrasDespVar'),
     despAdmin:g('despAdmin'), despPessoal:g('despPessoal'), recFinanc:g('recFinanc'), despFinanc:g('despFinanc'),
     recNaoOp:g('recNaoOp'), despNaoOp:g('despNaoOp'), investOp:g('investOp'), investEst:g('investEst'), emprestimos:g('emprestimos'),
+    subs: subsToSave,
   };
+  _dreImportSubs = {}; // limpa após salvar
   dreSave(); _dreTab='resumo'; dreRender();
 }
 function dreLimparForm() {
