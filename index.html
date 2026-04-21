@@ -5758,6 +5758,114 @@ function excluirCompra(id) {
   _refreshCompras();
 }
 
+function editarCompra(id) {
+  const compra = _cmvManual.compras.find(c => c._id === id);
+  if (!compra) return;
+  // Data para input type=date
+  let dateVal = '';
+  if (compra.dataObj instanceof Date && !isNaN(compra.dataObj)) {
+    const d = compra.dataObj;
+    dateVal = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  const vkg = compra.valorKg > 0 ? compra.valorKg : (compra.qtd > 0 ? compra.custo / compra.qtd : 0);
+  const IS = `width:100%;box-sizing:border-box;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit;margin-top:4px`;
+  const modal = document.createElement('div');
+  modal.id = 'cmv-edit-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      <div style="font-size:15px;font-weight:800;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center">
+        ✏️ Editar Compra
+        <button onclick="cancelarEditCompra()" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--muted);padding:0;line-height:1">×</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Data</label>
+          <input type="date" id="cedit-data" value="${dateVal}" style="${IS}">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Fornecedor</label>
+          <input type="text" id="cedit-forn" value="${compra.fornecedor||''}" placeholder="Nome do fornecedor" style="${IS}">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Qtd (kg)</label>
+            <input type="number" id="cedit-qtd" value="${compra.qtd||''}" step="0.001" min="0" placeholder="0.000" style="${IS}" oninput="cmvEditAutoCalc()">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Caixas</label>
+            <input type="number" id="cedit-cx" value="${compra.caixas||''}" step="1" min="0" placeholder="—" style="${IS}">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">R$/kg</label>
+            <input type="number" id="cedit-vkg" value="${vkg.toFixed(2)}" step="0.01" min="0" placeholder="0,00" style="${IS}" oninput="cmvEditAutoCalc()">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Total (R$)</label>
+            <input type="number" id="cedit-custo" value="${(compra.custo||0).toFixed(2)}" step="0.01" min="0" placeholder="0,00" style="${IS}" oninput="cmvEditAutoCalcInv()">
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end">
+        <button onclick="cancelarEditCompra()" style="padding:9px 18px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancelar</button>
+        <button onclick="salvarCompra(${id})" style="padding:9px 22px;border-radius:8px;border:none;background:#111;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 Salvar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) cancelarEditCompra(); });
+}
+
+function cmvEditAutoCalc() {
+  // Qtd × R$/kg → Total
+  const q = parseFloat(document.getElementById('cedit-qtd')?.value) || 0;
+  const v = parseFloat(document.getElementById('cedit-vkg')?.value) || 0;
+  if (q > 0 && v > 0) { const el = document.getElementById('cedit-custo'); if(el) el.value = (q*v).toFixed(2); }
+}
+function cmvEditAutoCalcInv() {
+  // Total ÷ Qtd → R$/kg
+  const q = parseFloat(document.getElementById('cedit-qtd')?.value) || 0;
+  const t = parseFloat(document.getElementById('cedit-custo')?.value) || 0;
+  if (q > 0 && t > 0) { const el = document.getElementById('cedit-vkg'); if(el) el.value = (t/q).toFixed(2); }
+}
+
+function cancelarEditCompra() {
+  const m = document.getElementById('cmv-edit-modal');
+  if (m) m.remove();
+}
+
+function salvarCompra(id) {
+  const compra = _cmvManual.compras.find(c => c._id === id);
+  if (!compra) return;
+  const dateStr  = document.getElementById('cedit-data')?.value;
+  const fornec   = (document.getElementById('cedit-forn')?.value||'').trim();
+  const qtd      = parseFloat(document.getElementById('cedit-qtd')?.value) || 0;
+  const caixas   = document.getElementById('cedit-cx')?.value;
+  const vkg      = parseFloat(document.getElementById('cedit-vkg')?.value) || 0;
+  const custo    = parseFloat(document.getElementById('cedit-custo')?.value) || 0;
+
+  compra.fornecedor = fornec;
+  compra.qtd   = qtd;
+  compra.caixas = caixas ? parseFloat(caixas) : undefined;
+  compra.valorKg = vkg;
+  compra.custo   = custo;
+
+  if (dateStr) {
+    const dt = new Date(dateStr + 'T12:00:00');
+    if (!isNaN(dt)) {
+      compra.dataObj = dt;
+      compra.dataStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
+      const MESES_ABR = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+      compra.mesLabel = `${MESES_ABR[dt.getMonth()]}/${dt.getFullYear().toString().slice(-2)}`;
+    }
+  }
+  _normalizarCompra(compra, 0);
+  saveCMVData();
+  cancelarEditCompra();
+  renderCMVDashboard();
+}
+
 // ── RESUMO ────────────────────────────────────────────────────────
 function buildCMVResumo(aggrs) {
   if (!aggrs.length) return '<p style="color:var(--muted);padding:20px">Sem dados</p>';
@@ -5963,7 +6071,10 @@ function buildCMVCompras(aggrs) {
             <td style="text-align:right;white-space:nowrap">${R(vkg,2)}</td>
             <td style="text-align:right;white-space:nowrap">${R(c.custo,0)}</td>
             <td style="text-align:center"><span class="badge ${c.source==='nota'?'green':'blue'}" style="font-size:10px">${c.source==='nota'?'Nota':'Plan.'}</span></td>
-            <td style="text-align:center"><button onclick="excluirCompra(${cid})" title="Excluir" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:2px 5px;border-radius:4px;line-height:1" onmouseover="this.style.color='#b00020'" onmouseout="this.style.color='var(--muted)'">✕</button></td>
+            <td style="text-align:center;white-space:nowrap">
+              ${c.source!=='nota'?`<button onclick="editarCompra(${cid})" title="Editar" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:2px 5px;border-radius:4px;line-height:1" onmouseover="this.style.color='#2563eb'" onmouseout="this.style.color='var(--muted)'">✏️</button>`:''}
+              <button onclick="excluirCompra(${cid})" title="Excluir" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:2px 5px;border-radius:4px;line-height:1" onmouseover="this.style.color='#b00020'" onmouseout="this.style.color='var(--muted)'">✕</button>
+            </td>
           </tr>`;
         }).join('') : `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Nenhuma compra no período selecionado</td></tr>`}
         ${all.length ? `<tr class="total-row">
