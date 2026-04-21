@@ -3613,6 +3613,10 @@ function dreRenderLancar(el, d) {
         📂 Importar pivot.xlsx
         <input type="file" accept=".xlsx,.xls" style="display:none" onchange="dreImportarPivot(this.files[0])">
       </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:8px;border:1px dashed var(--border);cursor:pointer;font-size:12px;font-weight:600;color:#059669" title="Atualiza apenas as subcategorias sem alterar os valores já lançados">
+        🗂️ Importar só subcategorias
+        <input type="file" accept=".xlsx,.xls" style="display:none" onchange="dreImportarApenasSubcategorias(this.files[0])">
+      </label>
       <span id="dre-import-status" style="font-size:12px;font-weight:600"></span>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
@@ -3712,6 +3716,36 @@ function dreImportarPivot(file) {
     drePreviewCalc();
   }, (err) => {
     showStatus('❌ Erro ao ler arquivo: ' + err, '#dc2626');
+  });
+}
+
+// ── Importar apenas subcategorias (sem sobrescrever valores) ─────
+function dreImportarApenasSubcategorias(file) {
+  if (!file) return;
+  const showStatus = (msg, color) => {
+    const el = document.getElementById('dre-import-status');
+    if (el) { el.textContent = msg; el.style.color = color || 'var(--muted)'; }
+  };
+  showStatus('⏳ Lendo subcategorias…', '#f59e0b');
+
+  dreParseXlsx(file, d => {
+    const subs = d.subs || {};
+    const total = Object.keys(subs).reduce((s, k) => s + subs[k].length, 0);
+
+    if (total === 0) {
+      showStatus('⚠️ Nenhuma subcategoria encontrada no arquivo.', '#f59e0b');
+      return;
+    }
+
+    dreLoad();
+    if (!_dreAll[_dreMes]) _dreAll[_dreMes] = {};
+    if (!_dreAll[_dreMes][_dreEnt]) _dreAll[_dreMes][_dreEnt] = dreBlank();
+    _dreAll[_dreMes][_dreEnt].subs = subs;
+    dreSave();
+    showStatus(`✅ ${total} subcategorias importadas — valores mantidos`, '#16a34a');
+    setTimeout(() => showStatus(''), 4000);
+  }, err => {
+    showStatus('❌ Erro: ' + err, '#dc2626');
   });
 }
 
