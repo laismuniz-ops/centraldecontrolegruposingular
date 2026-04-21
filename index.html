@@ -3498,8 +3498,8 @@ function dreRenderResumo(el, d) {
 
     // Subcategorias do pivot (todos os meses e entidades)
     let _subsSource = d.subs;
-    if (field && (!_subsSource || !_subsSource[field])) {
-      // Consolidado não tem subs diretas — busca de Singular, Brisa, Matriz ou Filial
+    // Fallback APENAS para Consolidado — entidades individuais usam só seus próprios subs
+    if (_dreEnt === 'Consolidado' && field && (!_subsSource || !_subsSource[field])) {
       const isNovo = !DRE_MESES_MATRIZ_FILIAL.includes(_dreMes);
       const fallbacks = isNovo ? ['Singular','Brisa'] : ['Matriz','Filial'];
       for (const fb of fallbacks) {
@@ -3914,19 +3914,21 @@ function dreRenderAnual(el) {
     const isNovo = !DRE_MESES_MATRIZ_FILIAL.includes(mes);
     let d, label, cS = null, cB = null;
     if (isNovo) {
+      // Mar+ — Singular e Brisa separados
       const temS = dreTemDados(mes,'Singular'), temB = dreTemDados(mes,'Brisa');
       d = dreConsolidadoNew(mes);
       label = 'Consolidado';
       if (temS) cS = dreCalc(dreGetData(mes,'Singular'));
       if (temB) cB = dreCalc(dreGetData(mes,'Brisa'));
     } else {
-      // Meses antigos (Jan/Fev): Matriz = Singular, Filial = Brisa nos totais anuais
+      // Jan/Fev — Singular = Matriz; Brisa não existia (cB = null)
+      // Filial compõe o Consolidado mas não é mostrada como Brisa
       const temFilial = dreTemDados(mes,'Filial');
       const temMatriz = dreTemDados(mes,'Matriz');
       d = temFilial ? dreConsolidado(mes) : dreGetData(mes,'Matriz');
       label = temFilial ? 'Consolidado' : 'Matriz';
-      if (temMatriz) cS = dreCalc(dreGetData(mes,'Matriz'));
-      if (temFilial) cB = dreCalc(dreGetData(mes,'Filial'));
+      if (temMatriz) cS = dreCalc(dreGetData(mes,'Matriz')); // Singular = Matriz
+      // cB permanece null — Brisa começa em março
     }
     return { mes, c: dreCalc(d), d, label, cS, cB };
   };
