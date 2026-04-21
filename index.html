@@ -1373,6 +1373,10 @@ function excluirUsuario(id) {
 
 // ── INIT AUTH ────────────────────────────────────────────────────
 (function initAuth() {
+  // Valor padrão do faturamento 2026 (pode ser alterado pelo ✏️ no card)
+  if (!localStorage.getItem('sing_fat_anual_2026_override')) {
+    localStorage.setItem('sing_fat_anual_2026_override', '406118.04');
+  }
   const s = _getSession();
   if (s) {
     document.getElementById('loginOverlay').classList.add('hidden');
@@ -1928,14 +1932,28 @@ function parseAnual(wb) {
     }));
 }
 
+const FAT_2026_OVR_KEY = 'sing_fat_anual_2026_override';
+function setFat2026Override() {
+  const cur = localStorage.getItem(FAT_2026_OVR_KEY);
+  const v = prompt('Faturamento 2026 (valor manual):', cur || '');
+  if (v === null) return;
+  if (v === '') { localStorage.removeItem(FAT_2026_OVR_KEY); }
+  else { const n = parseFloat(v.replace(/\./g,'').replace(',','.')); if (!isNaN(n)) localStorage.setItem(FAT_2026_OVR_KEY, n); }
+  if (window._lastAnual) renderAnual(window._lastAnual);
+}
+
 function renderAnual(anual) {
+  window._lastAnual = anual;
   const done = anual.filter(d => d.realizado2026 != null);
-  const totReal = done.reduce((s,d) => s+(d.realizado2026||0),0);
+  const totRealCalc = done.reduce((s,d) => s+(d.realizado2026||0),0);
+  const ovrRaw = localStorage.getItem(FAT_2026_OVR_KEY);
+  const totReal = ovrRaw ? parseFloat(ovrRaw) : totRealCalc;
+  const isOverride = !!ovrRaw;
   const totMeta = done.reduce((s,d) => s+(d.meta2026||0),0);
   const totFat25 = done.reduce((s,d) => s+(d.fat2025||0),0);
 
   document.getElementById('geralCards').innerHTML = `
-    <div class="card blue"><div class="label">Realizado 2026</div><div class="value">${R(totReal)}</div><div class="sub">${done.length} meses</div></div>
+    <div class="card blue"><div class="label">Realizado 2026${isOverride?` <span onclick="setFat2026Override()" style="cursor:pointer;font-size:10px;opacity:.7" title="Editar valor manual">✏️</span>`:` <span onclick="setFat2026Override()" style="cursor:pointer;font-size:10px;opacity:.5" title="Definir valor manual">✏️</span>`}</div><div class="value">${R(totReal)}</div><div class="sub">${isOverride?'⚙️ valor manual':''+done.length+' meses'}</div></div>
     <div class="card ${totReal>=totMeta?'green':'yellow'}"><div class="label">% de Meta</div><div class="value">${totMeta ? P(totReal/totMeta) : '—'}</div><div class="sub">Meta: ${R(totMeta)}</div></div>
     <div class="card green"><div class="label">Crescimento vs 2025</div><div class="value">${totFat25 ? '+'+P(totReal/totFat25-1) : '—'}</div><div class="sub">Base: ${R(totFat25)}</div></div>
     <div class="card purple"><div class="label">Meses em andamento</div><div class="value">${anual.length - done.length}</div></div>
@@ -3434,9 +3452,15 @@ function dreRenderResumo(el, d) {
   }
   const splitLine = (vS,vB) => {
     if (!cS||!cB) return '';
-    return `<div style="font-size:9px;color:var(--muted);margin-top:3px;display:flex;gap:6px">
-      <span>S: <b style="color:#a78bfa">${fmtN(vS)}</b></span>
-      <span>B: <b style="color:#34d399">${fmtN(vB)}</b></span>
+    return `<div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">
+      <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(167,139,250,.08);border-radius:5px;padding:3px 7px">
+        <span style="font-size:10px;font-weight:700;color:#a78bfa">Singular</span>
+        <span style="font-size:12px;font-weight:800;color:#a78bfa">${fmtN(vS)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(52,211,153,.08);border-radius:5px;padding:3px 7px">
+        <span style="font-size:10px;font-weight:700;color:#34d399">Brisa</span>
+        <span style="font-size:12px;font-weight:800;color:#34d399">${fmtN(vB)}</span>
+      </div>
     </div>`;
   };
 
@@ -3455,8 +3479,6 @@ function dreRenderResumo(el, d) {
     <td colspan="4" style="padding:10px 12px 4px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);border-top:1px solid var(--border)">${label}</td>
   </tr>`;
 
-  // Apenas Abril por enquanto — subcategorias do pivot
-  const isAbril = _dreMes === 'Abr/2026';
   let _subToggleIdx = 0;
 
   const row = (label,val,opts={}) => {
@@ -3466,8 +3488,8 @@ function dreRenderResumo(el, d) {
     const fw=lv<=1?'font-weight:700':'';
     const pl=lv===2?'padding-left:28px':lv===1?'padding-left:14px':'';
 
-    // Subcategorias: só para Abril e se o campo tiver subs importadas do pivot
-    const subs = (isAbril && field && d.subs && d.subs[field]) ? d.subs[field] : [];
+    // Subcategorias do pivot (todos os meses)
+    const subs = (field && d.subs && d.subs[field]) ? d.subs[field] : [];
     const hasSubs = subs.length > 0;
     const grpId = hasSubs ? `dre-sub-${_subToggleIdx++}` : null;
 
@@ -3811,7 +3833,10 @@ function dreAnualToggleMes(mes) {
 
 function dreRenderAnual(el) {
   dreLoad();
-  const mesesComDados = DRE_MESES.filter(m => dreTemDados(m,'Matriz')||dreTemDados(m,'Filial'));
+  const mesesComDados = DRE_MESES.filter(m => {
+    if (DRE_MESES_MATRIZ_FILIAL.includes(m)) return dreTemDados(m,'Matriz')||dreTemDados(m,'Filial');
+    return dreTemDados(m,'Singular')||dreTemDados(m,'Brisa');
+  });
 
   if(!mesesComDados.length) {
     el.innerHTML = `<div style="text-align:center;padding:60px;color:var(--muted)">
@@ -3830,13 +3855,23 @@ function dreRenderAnual(el) {
   const mesesAtivos = _dreAnualFiltro ? mesesComDados.filter(m => _dreAnualFiltro.has(m)) : mesesComDados;
 
   const calcMes = mes => {
-    const temFilial = dreTemDados(mes,'Filial');
-    const d = temFilial ? dreConsolidado(mes) : dreGetData(mes,'Matriz');
-    const c = dreCalc(d);
-    return { mes, c, d, label: temFilial?'Consolidado':'Matriz' };
+    const isNovo = !DRE_MESES_MATRIZ_FILIAL.includes(mes);
+    let d, label, cS = null, cB = null;
+    if (isNovo) {
+      const temS = dreTemDados(mes,'Singular'), temB = dreTemDados(mes,'Brisa');
+      d = dreConsolidadoNew(mes);
+      label = 'Consolidado';
+      if (temS) cS = dreCalc(dreGetData(mes,'Singular'));
+      if (temB) cB = dreCalc(dreGetData(mes,'Brisa'));
+    } else {
+      const temFilial = dreTemDados(mes,'Filial');
+      d = temFilial ? dreConsolidado(mes) : dreGetData(mes,'Matriz');
+      label = temFilial ? 'Consolidado' : 'Matriz';
+    }
+    return { mes, c: dreCalc(d), d, label, cS, cB };
   };
-  const dados    = mesesComDados.map(calcMes);          // todos — para tabela e gráfico
-  const dadosFlt = mesesAtivos.map(calcMes);            // filtrados — para KPIs e totais
+  const dados    = mesesComDados.map(calcMes);
+  const dadosFlt = mesesAtivos.map(calcMes);
 
   const soma = (arr,fn) => arr.reduce((s,x)=>s+fn(x),0);
   const totRb  = soma(dadosFlt,x=>x.c.rb);
@@ -3848,19 +3883,40 @@ function dreRenderAnual(el) {
   const totLf  = soma(dadosFlt,x=>x.c.lf);
   const totMcPct = totRb>0?totMc/totRb:0;
 
+  // Totais Singular e Brisa (apenas meses novo esquema)
+  const totSrb  = soma(dadosFlt,x=>x.cS?.rb||0);  const totBrb  = soma(dadosFlt,x=>x.cB?.rb||0);
+  const totSrl  = soma(dadosFlt,x=>x.cS?.rl||0);  const totBrl  = soma(dadosFlt,x=>x.cB?.rl||0);
+  const totSlb  = soma(dadosFlt,x=>x.cS?.lb||0);  const totBlb  = soma(dadosFlt,x=>x.cB?.lb||0);
+  const totSmc  = soma(dadosFlt,x=>x.cS?.mc||0);  const totBmc  = soma(dadosFlt,x=>x.cB?.mc||0);
+  const totSlop = soma(dadosFlt,x=>x.cS?.lop||0); const totBlop = soma(dadosFlt,x=>x.cB?.lop||0);
+  const totSll  = soma(dadosFlt,x=>x.cS?.ll||0);  const totBll  = soma(dadosFlt,x=>x.cB?.ll||0);
+  const totSlf  = soma(dadosFlt,x=>x.cS?.lf||0);  const totBlf  = soma(dadosFlt,x=>x.cB?.lf||0);
+  const hasSplit = totSrb > 0 || totBrb > 0;
+
   const clr  = v => v>=0?'#22c55e':'#ef4444';
   const fmtK = v => `${v<0?'-':''}R$ ${Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
   const fmtN = v => `${v<0?'-':''}R$ ${Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:0})}`;
   const pp   = (v,b) => b>0?((v/b)*100).toFixed(1)+'%':'—';
+  const splitAnual = (vS,vB) => hasSplit ? `
+    <div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">
+      <div style="display:flex;justify-content:space-between;background:rgba(167,139,250,.08);border-radius:5px;padding:3px 7px">
+        <span style="font-size:10px;font-weight:700;color:#a78bfa">Singular</span>
+        <span style="font-size:12px;font-weight:800;color:#a78bfa">${fmtN(vS)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;background:rgba(52,211,153,.08);border-radius:5px;padding:3px 7px">
+        <span style="font-size:10px;font-weight:700;color:#34d399">Brisa</span>
+        <span style="font-size:12px;font-weight:800;color:#34d399">${fmtN(vB)}</span>
+      </div>
+    </div>` : '';
 
   const kpis = [
-    {l:'Faturamento Bruto',v:totRb,c:'var(--text)',sub:mesesAtivos.length+'M selecionado'+(mesesAtivos.length!==1?'s':'')},
-    {l:'Receita Líquida',  v:totRl,c:'#6366f1',   sub:pp(totRl,totRb)+' do bruto'},
-    {l:'Lucro Bruto',      v:totLb,c:clr(totLb),  sub:pp(totLb,totRb)+' da receita'},
-    {l:'Margem Contrib.',  v:totMc,c:clr(totMc),  sub:(totMcPct*100).toFixed(1)+'% da receita'},
-    {l:'Lucro Operacional',v:totLop,c:clr(totLop),sub:pp(totLop,totRb)+' da receita'},
-    {l:'Lucro Líquido',    v:totLl,c:clr(totLl),  sub:pp(totLl,totRb)+' da receita'},
-    {l:'Resultado Final',  v:totLf,c:clr(totLf),  sub:pp(totLf,totRb)+' da receita'},
+    {l:'Faturamento Bruto',v:totRb,c:'var(--text)',sub:mesesAtivos.length+'M selecionado'+(mesesAtivos.length!==1?'s':''),sV:totSrb,bV:totBrb},
+    {l:'Receita Líquida',  v:totRl,c:'#6366f1',   sub:pp(totRl,totRb)+' do bruto',     sV:totSrl, bV:totBrl},
+    {l:'Lucro Bruto',      v:totLb,c:clr(totLb),  sub:pp(totLb,totRb)+' da receita',   sV:totSlb, bV:totBlb},
+    {l:'Margem Contrib.',  v:totMc,c:clr(totMc),  sub:(totMcPct*100).toFixed(1)+'% da receita', sV:totSmc, bV:totBmc},
+    {l:'Lucro Operacional',v:totLop,c:clr(totLop),sub:pp(totLop,totRb)+' da receita',  sV:totSlop,bV:totBlop},
+    {l:'Lucro Líquido',    v:totLl,c:clr(totLl),  sub:pp(totLl,totRb)+' da receita',   sV:totSll, bV:totBll},
+    {l:'Resultado Final',  v:totLf,c:clr(totLf),  sub:pp(totLf,totRb)+' da receita',   sV:totSlf, bV:totBlf},
   ];
 
   el.innerHTML = `
@@ -3875,12 +3931,13 @@ function dreRenderAnual(el) {
     </div>
 
     <!-- KPIs grandes -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:24px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:24px">
       ${kpis.map(k=>`
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 16px">
           <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:10px">${k.l}</div>
           <div style="font-size:21px;font-weight:900;color:${k.c};line-height:1.1">${fmtK(k.v)}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:6px;font-weight:600">${k.sub}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;font-weight:600">${k.sub}</div>
+          ${splitAnual(k.sV,k.bV)}
         </div>`).join('')}
     </div>
 
@@ -3904,17 +3961,18 @@ function dreRenderAnual(el) {
           <th style="padding:10px 14px;font-size:11px;text-align:right;text-transform:uppercase;letter-spacing:.08em">Resultado</th>
         </tr></thead>
         <tbody>
-          ${dados.map(({mes,c,label})=>`
-            <tr style="cursor:pointer;border-bottom:1px solid var(--border)" onclick="_dreMes='${mes}';_dreTab='resumo';dreRender()" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+          ${dados.map(({mes,c,label,cS,cB})=>{
+            const sbLine = (vS,vB) => (cS||cB) ? `<br><span style="font-size:9px;font-weight:400"><span style="color:#a78bfa">S:${fmtN(vS||0)}</span> <span style="color:#34d399">B:${fmtN(vB||0)}</span></span>` : '';
+            return `<tr style="cursor:pointer;border-bottom:1px solid var(--border)" onclick="_dreMes='${mes}';_dreTab='resumo';dreRender()" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
               <td style="padding:10px 14px;font-size:13px;font-weight:600">${mes.replace('/2026','')}<span style="font-size:10px;color:var(--muted);margin-left:6px;font-weight:400">${label}</span></td>
-              <td style="padding:10px 12px;font-size:13px;text-align:right">R$ ${c.rb.toLocaleString('pt-BR',{minimumFractionDigits:0})}</td>
-              <td style="padding:10px 12px;font-size:13px;text-align:right">${fmtN(c.rl)}<br><span style="font-size:10px;color:var(--muted);font-weight:400">${pp(c.rl,c.rb)}</span></td>
-              <td style="padding:10px 12px;font-size:13px;text-align:right;font-weight:600;color:${clr(c.lb)}">${fmtN(c.lb)}<br><span style="font-size:10px;font-weight:400;color:var(--muted)">${pp(c.lb,c.rb)}</span></td>
+              <td style="padding:10px 12px;font-size:13px;text-align:right">${fmtN(c.rb)}${sbLine(cS?.rb,cB?.rb)}</td>
+              <td style="padding:10px 12px;font-size:13px;text-align:right">${fmtN(c.rl)}${sbLine(cS?.rl,cB?.rl)}<br><span style="font-size:10px;color:var(--muted);font-weight:400">${pp(c.rl,c.rb)}</span></td>
+              <td style="padding:10px 12px;font-size:13px;text-align:right;font-weight:600;color:${clr(c.lb)}">${fmtN(c.lb)}${sbLine(cS?.lb,cB?.lb)}<br><span style="font-size:10px;font-weight:400;color:var(--muted)">${pp(c.lb,c.rb)}</span></td>
               <td style="padding:10px 12px;font-size:13px;text-align:right">${(c.mcPct*100).toFixed(1)}%</td>
-              <td style="padding:10px 12px;font-size:13px;text-align:right;font-weight:600;color:${clr(c.lop)}">${fmtN(c.lop)}<br><span style="font-size:10px;font-weight:400;color:var(--muted)">${pp(c.lop,c.rb)}</span></td>
-              <td style="padding:10px 12px;font-size:13px;text-align:right;font-weight:600;color:${clr(c.ll)}">${fmtN(c.ll)}<br><span style="font-size:10px;font-weight:400;color:var(--muted)">${pp(c.ll,c.rb)}</span></td>
-              <td style="padding:10px 14px;font-size:13px;text-align:right;font-weight:700;color:${clr(c.lf)}">${fmtN(c.lf)}<br><span style="font-size:10px;font-weight:400;color:var(--muted)">${pp(c.lf,c.rb)}</span></td>
-            </tr>`).join('')}
+              <td style="padding:10px 12px;font-size:13px;text-align:right;font-weight:600;color:${clr(c.lop)}">${fmtN(c.lop)}${sbLine(cS?.lop,cB?.lop)}<br><span style="font-size:10px;font-weight:400;color:var(--muted)">${pp(c.lop,c.rb)}</span></td>
+              <td style="padding:10px 12px;font-size:13px;text-align:right;font-weight:600;color:${clr(c.ll)}">${fmtN(c.ll)}${sbLine(cS?.ll,cB?.ll)}<br><span style="font-size:10px;font-weight:400;color:var(--muted)">${pp(c.ll,c.rb)}</span></td>
+              <td style="padding:10px 14px;font-size:13px;text-align:right;font-weight:700;color:${clr(c.lf)}">${fmtN(c.lf)}${sbLine(cS?.lf,cB?.lf)}<br><span style="font-size:10px;font-weight:400;color:var(--muted)">${pp(c.lf,c.rb)}</span></td>
+            </tr>`;}).join('')}
           <tr style="background:var(--surface2);font-weight:800;border-top:2px solid #111">
             <td style="padding:10px 14px;font-size:13px">TOTAL ${mesesComDados.length}M</td>
             <td style="padding:10px 12px;font-size:13px;text-align:right">R$ ${totRb.toLocaleString('pt-BR',{minimumFractionDigits:0})}</td>
