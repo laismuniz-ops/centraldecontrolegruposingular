@@ -3174,6 +3174,14 @@ function dreToggleSub(id) {
   var btn = document.getElementById('btn-' + id);
   if (btn) btn.textContent = open ? '▶' : '▼';
 }
+function dreFecharTodasSubs() {
+  document.querySelectorAll('[data-grp]').forEach(function(r) { r.style.display = 'none'; });
+  document.querySelectorAll('[id^="btn-dre-sub-"]').forEach(function(b) { b.textContent = '▶'; });
+}
+function dreAbrirTodasSubs() {
+  document.querySelectorAll('[data-grp]').forEach(function(r) { r.style.display = ''; });
+  document.querySelectorAll('[id^="btn-dre-sub-"]').forEach(function(b) { b.textContent = '▼'; });
+}
 
 const DRE_MESES_FILIAL = ['Jan/2026','Fev/2026']; // meses que têm dados de Filial (legado)
 
@@ -3504,7 +3512,7 @@ function dreRenderResumo(el, d) {
     const grpId = hasSubs ? `dre-sub-${_subToggleIdx++}` : null;
 
     const toggleBtn = hasSubs
-      ? `<span id="btn-${grpId}" onclick="dreToggleSub('${grpId}')" style="cursor:pointer;font-size:9px;color:var(--muted);margin-right:5px;user-select:none">▼</span>`
+      ? `<span id="btn-${grpId}" onclick="dreToggleSub('${grpId}')" style="cursor:pointer;font-size:9px;color:var(--muted);margin-right:5px;user-select:none">▶</span>`
       : '';
 
     const subRows = hasSubs ? subs.map(s => {
@@ -3512,7 +3520,7 @@ function dreRenderResumo(el, d) {
       const neg = sv < 0;
       const sfmt = `<span style="color:${neg?'#ef4444':'#10b981'}">${neg?'-':''}R$ ${Math.abs(sv).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`;
       const spct = br ? `${((Math.abs(sv)/br)*100).toFixed(1)}%` : '—';
-      return `<tr data-grp="${grpId}" style="background:rgba(255,255,255,.02)">
+      return `<tr data-grp="${grpId}" style="display:none;background:rgba(255,255,255,.02)">
         <td style="padding:4px 12px 4px 44px;font-size:11px;color:var(--muted)">${s.l}</td>
         <td style="padding:4px 12px;font-size:11px;color:var(--muted);text-align:right;white-space:nowrap">${sfmt}</td>
         <td style="padding:4px 12px;font-size:10px;color:var(--muted);text-align:right">${spct}</td>
@@ -3540,7 +3548,11 @@ function dreRenderResumo(el, d) {
     <div class="table-box" style="padding:0;overflow:hidden">
       <table style="width:100%;border-collapse:collapse">
         <thead><tr style="background:#111;color:#fff">
-          <th style="padding:9px 12px;font-size:11px;text-align:left;text-transform:uppercase;letter-spacing:.08em">Conta</th>
+          <th style="padding:9px 12px;font-size:11px;text-align:left;text-transform:uppercase;letter-spacing:.08em">
+            Conta
+            <span onclick="dreFecharTodasSubs()" title="Fechar todas as subcategorias" style="cursor:pointer;margin-left:8px;font-size:10px;background:rgba(255,255,255,.12);border-radius:4px;padding:2px 6px;font-weight:600;letter-spacing:0;text-transform:none">▶▶ fechar todas</span>
+            <span onclick="dreAbrirTodasSubs()" title="Abrir todas as subcategorias" style="cursor:pointer;margin-left:4px;font-size:10px;background:rgba(255,255,255,.12);border-radius:4px;padding:2px 6px;font-weight:600;letter-spacing:0;text-transform:none">▼▼ abrir todas</span>
+          </th>
           <th style="padding:9px 12px;font-size:11px;text-align:right;text-transform:uppercase;letter-spacing:.08em">Valor</th>
           <th style="padding:9px 12px;font-size:11px;text-align:right;text-transform:uppercase;letter-spacing:.08em">% Receita</th>
           <th style="padding:9px 16px;font-size:11px;text-align:right;text-transform:uppercase;letter-spacing:.08em">vs Orç.</th>
@@ -3908,9 +3920,13 @@ function dreRenderAnual(el) {
       if (temS) cS = dreCalc(dreGetData(mes,'Singular'));
       if (temB) cB = dreCalc(dreGetData(mes,'Brisa'));
     } else {
+      // Meses antigos (Jan/Fev): Matriz = Singular, Filial = Brisa nos totais anuais
       const temFilial = dreTemDados(mes,'Filial');
+      const temMatriz = dreTemDados(mes,'Matriz');
       d = temFilial ? dreConsolidado(mes) : dreGetData(mes,'Matriz');
       label = temFilial ? 'Consolidado' : 'Matriz';
+      if (temMatriz) cS = dreCalc(dreGetData(mes,'Matriz'));
+      if (temFilial) cB = dreCalc(dreGetData(mes,'Filial'));
     }
     return { mes, c: dreCalc(d), d, label, cS, cB };
   };
