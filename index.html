@@ -2301,9 +2301,42 @@ function salvarMesNoAnual(ativos) {
   salvar('sing_anual_brisa', brisaAtivos);
 }
 
+function anualEditarCelula(btn, prefixo, ano, mes, campo) {
+  const key = `${prefixo}_${ano}_${mes}`;
+  const s = JSON.parse(storeGet(key)||'{}');
+  const val = parseNum(s[campo])||'';
+  const wrap = btn.closest('[data-edit-wrap]');
+  if (!wrap) return;
+  wrap.innerHTML = `<input type="number" value="${val}" autofocus
+    style="width:110px;padding:4px 8px;border-radius:5px;border:1px solid var(--accent);background:var(--surface2);color:var(--text);font-size:12px;outline:none;font-family:inherit"
+    onblur="anualSalvarCelula(this,'${prefixo}','${ano}','${mes}','${campo}')"
+    onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.value='';this.blur()}">`;
+  wrap.querySelector('input').focus();
+  wrap.querySelector('input').select();
+}
+function anualSalvarCelula(input, prefixo, ano, mes, campo) {
+  const key = `${prefixo}_${ano}_${mes}`;
+  const s = JSON.parse(storeGet(key)||'{}');
+  const newVal = parseFloat(input.value);
+  s[campo] = isNaN(newVal) ? null : newVal;
+  storeSet(key, JSON.stringify(s));
+  const panel = document.getElementById('panel-txn-anual');
+  if (panel) panel.innerHTML = buildAnual2026HTML();
+}
+
 function buildAnual2026HTML() {
   const ano = 2026;
   const iStyle = `background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-size:12px;outline:none`;
+  // Célula editável: exibe valor estático + botão ✏️ ao clicar edita inline
+  const editCell = (prefixo, mesIdx, campo, val, fmtFn, pct=null) => {
+    const display = val != null ? `<span style="font-weight:700;${pct!=null?`color:${pct>=1?'#16a34a':pct>=.8?'#d97706':'#dc2626'}`:''}${campo==='ped'||campo==='pedSalao'||campo==='pedDel'?';color:var(--muted)':''}">${fmtFn(val)}</span>`
+                                : `<span style="color:var(--muted)">—</span>`;
+    return `<div data-edit-wrap style="display:flex;align-items:center;gap:4px;justify-content:flex-end">
+      ${display}
+      <button onclick="anualEditarCelula(this,'${prefixo}','${ano}','${mesIdx}','${campo}')"
+        title="Editar" style="padding:1px 5px;font-size:10px;line-height:1.5;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;flex-shrink:0">✏️</button>
+    </div>`;
+  };
 
   // ── MATRIZ ──────────────────────────────────────────────────────
   let tF25=0,tP25=0,tMeta=0,tReal=0,tP26=0,sF25=0,sF26=0,cP25=0,cP26=0;
@@ -2326,16 +2359,10 @@ function buildAnual2026HTML() {
       <td style="font-weight:500">${fat25!=null?R(fat25):'<span style="color:var(--muted)">—</span>'}</td>
       <td style="color:var(--muted)">${ped25!=null?N(ped25):'—'}</td>
       <td style="color:var(--muted)">${tick25!=null?R(tick25):'—'}</td>
-      <td><input type="number" value="${meta||''}" placeholder="—" style="${iStyle};width:100px"
-        data-prefixo="sing_anual" data-ano="${ano}" data-mes="${i}" data-campo="meta"
-        onchange="salvarCampoAnual(this)"></td>
-      <td><input type="number" value="${real!=null?real:''}" placeholder="—" style="${iStyle};width:110px;${pct!=null?`border-color:${pct>=1?'#22c55e':pct>=.8?'#f59e0b':'#ef4444'}`:'border-color:rgba(0,0,0,.2)'}"
-        data-prefixo="sing_anual" data-ano="${ano}" data-mes="${i}" data-campo="real"
-        onchange="salvarCampoAnual(this)" title="Preenchido automaticamente ao subir relatório. Editável."></td>
+      <td>${editCell('sing_anual',i,'meta',meta,R)}</td>
+      <td>${editCell('sing_anual',i,'real',real,R,pct)}</td>
       <td>${pct!=null?`<span class="badge ${pct>=1?'green':pct>=.8?'yellow':'red'}">${P(pct)}</span>`:'—'}</td>
-      <td><input type="number" value="${ped26!=null?ped26:''}" placeholder="—" style="${iStyle};width:80px"
-        data-prefixo="sing_anual" data-ano="${ano}" data-mes="${i}" data-campo="ped"
-        onchange="salvarCampoAnual(this)"></td>
+      <td>${editCell('sing_anual',i,'ped',ped26,N)}</td>
       <td style="color:var(--muted)">${tick26!=null?R(tick26):'—'}</td>
       <td><textarea data-prefixo="sing_anual" data-ano="${ano}" data-mes="${i}" data-campo="nota"
         onchange="salvarCampoAnual(this)"
@@ -2357,16 +2384,10 @@ function buildAnual2026HTML() {
     if(real) {bReal+=real; bPed+=ped||0;}
     return `<tr${real!=null?' style="background:rgba(180,180,180,.03)"':''}>
       <td style="font-weight:600;white-space:nowrap">${mes}</td>
-      <td><input type="number" value="${meta||''}" placeholder="—" style="${iStyle};width:100px"
-        data-prefixo="sing_anual_brisa" data-ano="${ano}" data-mes="${i}" data-campo="meta"
-        onchange="salvarCampoAnual(this)"></td>
-      <td><input type="number" value="${real!=null?real:''}" placeholder="—" style="${iStyle};width:110px;${pct!=null?`border-color:${pct>=1?'#22c55e':pct>=.8?'#f59e0b':'#ef4444'}`:'border-color:rgba(0,0,0,.2)'}"
-        data-prefixo="sing_anual_brisa" data-ano="${ano}" data-mes="${i}" data-campo="real"
-        onchange="salvarCampoAnual(this)"></td>
+      <td>${editCell('sing_anual_brisa',i,'meta',meta,R)}</td>
+      <td>${editCell('sing_anual_brisa',i,'real',real,R,pct)}</td>
       <td>${pct!=null?`<span class="badge ${pct>=1?'green':pct>=.8?'yellow':'red'}">${P(pct)}</span>`:'—'}</td>
-      <td><input type="number" value="${ped!=null?ped:''}" placeholder="—" style="${iStyle};width:80px"
-        data-prefixo="sing_anual_brisa" data-ano="${ano}" data-mes="${i}" data-campo="ped"
-        onchange="salvarCampoAnual(this)"></td>
+      <td>${editCell('sing_anual_brisa',i,'ped',ped,N)}</td>
       <td style="color:var(--muted)">${tick!=null?R(tick):'—'}</td>
       <td><textarea data-prefixo="sing_anual_brisa" data-ano="${ano}" data-mes="${i}" data-campo="nota"
         onchange="salvarCampoAnual(this)"
@@ -2389,19 +2410,11 @@ function buildAnual2026HTML() {
     if(real) {fReal+=real; fPS+=pedSalao||0; fPD+=pedDel||0;}
     return `<tr${real!=null?' style="background:rgba(180,180,180,.03)"':''}>
       <td style="font-weight:600;white-space:nowrap">${mes}</td>
-      <td><input type="number" value="${meta||''}" placeholder="—" style="${iStyle};width:100px"
-        data-prefixo="sing_anual_filial" data-ano="${ano}" data-mes="${i}" data-campo="meta"
-        onchange="salvarCampoAnual(this)"></td>
-      <td><input type="number" value="${real!=null?real:''}" placeholder="—" style="${iStyle};width:110px;${pct!=null?`border-color:${pct>=1?'#22c55e':pct>=.8?'#f59e0b':'#ef4444'}`:'border-color:rgba(0,0,0,.2)'}"
-        data-prefixo="sing_anual_filial" data-ano="${ano}" data-mes="${i}" data-campo="real"
-        onchange="salvarCampoAnual(this)"></td>
+      <td>${editCell('sing_anual_filial',i,'meta',meta,R)}</td>
+      <td>${editCell('sing_anual_filial',i,'real',real,R,pct)}</td>
       <td>${pct!=null?`<span class="badge ${pct>=1?'green':pct>=.8?'yellow':'red'}">${P(pct)}</span>`:'—'}</td>
-      <td><input type="number" value="${pedSalao!=null?pedSalao:''}" placeholder="—" style="${iStyle};width:75px"
-        data-prefixo="sing_anual_filial" data-ano="${ano}" data-mes="${i}" data-campo="pedSalao"
-        onchange="salvarCampoAnual(this)"></td>
-      <td><input type="number" value="${pedDel!=null?pedDel:''}" placeholder="—" style="${iStyle};width:75px"
-        data-prefixo="sing_anual_filial" data-ano="${ano}" data-mes="${i}" data-campo="pedDel"
-        onchange="salvarCampoAnual(this)"></td>
+      <td>${editCell('sing_anual_filial',i,'pedSalao',pedSalao,N)}</td>
+      <td>${editCell('sing_anual_filial',i,'pedDel',pedDel,N)}</td>
       <td style="color:var(--muted)">${tick!=null?R(tick):'—'}</td>
       <td><textarea data-prefixo="sing_anual_filial" data-ano="${ano}" data-mes="${i}" data-campo="nota"
         onchange="salvarCampoAnual(this)"
