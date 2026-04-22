@@ -7006,8 +7006,7 @@ function caixaRenderSemanal(el,all,mesesDisp){
 
     <!-- KPIs da seleção -->
     ${kpiFirst?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:18px">
-      ${cxKpi('Saldo Inicial',kpiFirst.saldo,null,sfC?'Entrada da semana':'Primeira semana do período','#94a3b8')}
-      ${cxKpi('Saldo Final',kpiLast.saldo,varKpi,sfC?'Fechamento da semana':varKpi!==null?'vs. início do período':'—','#3b82f6')}
+      ${cxKpi('Saldo Inicial',kpiFirst.saldo,null,sfC?'Semana selecionada':'Primeira semana do período','#94a3b8')}
       ${cxKpi('IFood a Receber',kpiLast.ifood||0,null,kpiLast.saldo>0?((kpiLast.ifood||0)/kpiLast.saldo*100).toFixed(1)+'% do saldo':'—','#f59e0b')}
       ${cxKpi('Devedor',kpiLast.devedor||0,null,kpiLast.saldo>0?((kpiLast.devedor||0)/kpiLast.saldo*100).toFixed(0)+'% do saldo':'—','#ef4444')}
       ${cxKpi('Projeção',kpiLast.projecao||0,null,(kpiLast.projecao||0)>=0?'✅ Positiva':'⚠️ Negativa',(kpiLast.projecao||0)>=0?'#22c55e':'#ef4444')}
