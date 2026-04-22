@@ -6782,8 +6782,10 @@ function caixaRenderMensal(el,all,mesesDisp){
   const filtered=all.filter(e=>e.data.startsWith(mf));
   const last=filtered[filtered.length-1];
   if(!last){el.innerHTML='<p style="color:var(--muted)">Selecione um mês com dados.</p>';return;}
+  const first=filtered[0];
   const prev=filtered[filtered.length-2]||null;
   const varSaldo=prev?last.saldo-prev.saldo:null;
+  const varMes=filtered.length>=2?last.saldo-first.saldo:null;
   const cxReal=(last.fisico||0)+(last.sangria||0)+(last.sicoob||0)+(last.itau||0)+(last.tesouraria||0);
   const ifoodPct=last.saldo>0?last.ifood/last.saldo*100:0;
   const devRatio=last.saldo>0?(last.devedor||0)/last.saldo*100:0;
@@ -6800,7 +6802,8 @@ function caixaRenderMensal(el,all,mesesDisp){
 
     <!-- KPIs -->
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:18px">
-      ${cxKpi('Último Saldo',last.saldo,varSaldo,'Posição mais recente','#3b82f6')}
+      ${cxKpi('Saldo Inicial',first.saldo,null,'Primeira semana do mês','#94a3b8')}
+      ${cxKpi('Saldo Final',last.saldo,varMes,'vs. início do mês','#3b82f6')}
       ${cxKpi('Caixa Real',cxReal,null,'Físico + Banco + Tesouraria','#6366f1')}
       ${hasCaixaIF&&last.caixaFinal?cxKpi('Caixa Final',last.caixaFinal,last.caixaInicial?(last.caixaFinal-last.caixaInicial):null,'Fechamento da última semana','#14b8a6'):''}
       ${cxKpi('IFood a Receber',last.ifood,null,ifoodPct.toFixed(1)+'% do saldo','#f59e0b')}
@@ -6960,28 +6963,78 @@ function caixaRenderSemanal(el,all,mesesDisp){
   if(!all.length){el.innerHTML='<p style="color:var(--muted)">Nenhum dado ainda.</p>';return;}
   const hasCaixaIF=all.some(e=>e.caixaInicial||e.caixaFinal);
 
+  // --- Filtros persistentes ---
+  if(window._caixaSemMesFiltro===undefined)window._caixaSemMesFiltro='';
+  if(window._caixaSemSemFiltro===undefined)window._caixaSemSemFiltro='';
+  const mf=window._caixaSemMesFiltro;
+  const sf=window._caixaSemSemFiltro;
+
+  // Dados filtrados por mês (para tabela + gráficos)
+  const filtered=mf?all.filter(e=>e.data.startsWith(mf)):all;
+  // Se a semana selecionada saiu do filtro, limpar
+  if(sf&&!filtered.find(e=>e.data===sf))window._caixaSemSemFiltro='';
+  const sfC=window._caixaSemSemFiltro;
+
+  // KPI = semana específica ou range filtrado
+  const kpiSet=sfC?filtered.filter(e=>e.data===sfC):filtered;
+  const kpiFirst=kpiSet[0], kpiLast=kpiSet[kpiSet.length-1];
+  const varKpi=kpiSet.length>=2?kpiLast.saldo-kpiFirst.saldo:null;
+
+  const RR=`caixaRenderSemanal(document.getElementById('caixa-conteudo'),caixaLoad().sort((a,b)=>a.data.localeCompare(b.data)),[...new Set(caixaLoad().map(e=>e.data.substring(0,7)))].sort())`;
+
   el.innerHTML=`
-    <!-- Gráfico evolução todas as semanas -->
+    <!-- Filtro Mês -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+      <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;flex-shrink:0;margin-right:2px">Mês:</span>
+      <button onclick="window._caixaSemMesFiltro='';window._caixaSemSemFiltro='';${RR}"
+        style="padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid ${!mf?'var(--accent)':'var(--border)'};background:${!mf?'var(--accent)':'transparent'};color:${!mf?'#fff':'var(--muted)'}">Todos</button>
+      ${mesesDisp.map(m=>`<button onclick="window._caixaSemMesFiltro='${m}';window._caixaSemSemFiltro='';${RR}"
+        style="padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid ${mf===m?'var(--accent)':'var(--border)'};background:${mf===m?'var(--accent)':'transparent'};color:${mf===m?'#fff':'var(--muted)'}">
+        ${caixaMesLabel(m+'-01')}</button>`).join('')}
+    </div>
+
+    <!-- Filtro Semana -->
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:18px;align-items:center">
+      <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;flex-shrink:0;margin-right:2px">Semana:</span>
+      <button onclick="window._caixaSemSemFiltro='';${RR}"
+        style="padding:4px 11px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid ${!sfC?'var(--accent)':'var(--border)'};background:${!sfC?'var(--accent)':'transparent'};color:${!sfC?'#fff':'var(--muted)'}">Todas</button>
+      ${filtered.map(e=>`<button onclick="window._caixaSemSemFiltro='${e.data}';${RR}"
+        style="padding:4px 11px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid ${sfC===e.data?'var(--accent)':'var(--border)'};background:${sfC===e.data?'var(--accent)':'transparent'};color:${sfC===e.data?'#fff':'var(--muted)'}">
+        ${caixaFmtDate(e.data)}</button>`).join('')}
+    </div>
+
+    <!-- KPIs da seleção -->
+    ${kpiFirst?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:18px">
+      ${cxKpi('Saldo Inicial',kpiFirst.saldo,null,sfC?'Entrada da semana':'Primeira semana do período','#94a3b8')}
+      ${cxKpi('Saldo Final',kpiLast.saldo,varKpi,sfC?'Fechamento da semana':varKpi!==null?'vs. início do período':'—','#3b82f6')}
+      ${cxKpi('IFood a Receber',kpiLast.ifood||0,null,kpiLast.saldo>0?((kpiLast.ifood||0)/kpiLast.saldo*100).toFixed(1)+'% do saldo':'—','#f59e0b')}
+      ${cxKpi('Devedor',kpiLast.devedor||0,null,kpiLast.saldo>0?((kpiLast.devedor||0)/kpiLast.saldo*100).toFixed(0)+'% do saldo':'—','#ef4444')}
+      ${cxKpi('Projeção',kpiLast.projecao||0,null,(kpiLast.projecao||0)>=0?'✅ Positiva':'⚠️ Negativa',(kpiLast.projecao||0)>=0?'#22c55e':'#ef4444')}
+      ${hasCaixaIF&&kpiLast.caixaFinal?cxKpi('Caixa Final',kpiLast.caixaFinal,kpiLast.caixaInicial?(kpiLast.caixaFinal-kpiLast.caixaInicial):null,'Fechamento da semana','#14b8a6'):''}
+    </div>`:''}
+
+    <!-- Gráfico evolução -->
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px">
       <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">Evolução Semanal — Saldo, IFood e Devedor</div>
       <canvas id="cx-sem-evol" style="max-height:220px"></canvas>
     </div>
 
     ${hasCaixaIF?`<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">Caixa Inicial vs Final — Todas as Semanas</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">Caixa Inicial vs Final — Semanas Selecionadas</div>
       <canvas id="cx-sem-if" style="max-height:190px"></canvas>
     </div>`:''}
 
-    <!-- Projeção todas as semanas -->
+    <!-- Projeção -->
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">Projeção de Caixa — Todas as Semanas</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">Projeção de Caixa — Semanas Selecionadas</div>
       <canvas id="cx-sem-proj" style="max-height:170px"></canvas>
     </div>
 
-    <!-- Tabela completa -->
+    <!-- Tabela -->
     <div class="table-box" style="padding:0;overflow:hidden">
-      <div style="padding:12px 18px;border-bottom:1px solid var(--border)">
-        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Todas as Semanas</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--border)">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">${sfC?'Semana de '+caixaFmtDate(sfC):mf?caixaMesLabel(mf+'-01')+' — Todas as semanas':'Todas as Semanas'}</div>
+        <span style="font-size:11px;color:var(--muted)">${filtered.length} semanas</span>
       </div>
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;min-width:860px">
@@ -6997,14 +7050,15 @@ function caixaRenderSemanal(el,all,mesesDisp){
             <th></th>
           </tr></thead>
           <tbody>
-            ${all.map((e,i)=>{
-              const pv=i>0?all[i-1]:null;
+            ${filtered.map((e,i)=>{
+              const pv=i>0?filtered[i-1]:null;
               const dv=pv?e.saldo-pv.saldo:null;
               const vCI=e.caixaFinal&&e.caixaInicial?e.caixaFinal-e.caixaInicial:null;
               const ifPct=e.saldo>0?(e.ifood||0)/e.saldo*100:0;
               const isMesChange=!pv||pv.data.substring(0,7)!==e.data.substring(0,7);
-              return `${isMesChange?`<tr style="background:rgba(255,255,255,.03)"><td colspan="20" style="padding:6px 14px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">${caixaMesLabel(e.data.substring(0,7)+'-01')}</td></tr>`:''}
-              <tr style="border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+              const isSelected=sfC===e.data;
+              return `${isMesChange&&!mf?`<tr style="background:rgba(255,255,255,.03)"><td colspan="20" style="padding:6px 14px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">${caixaMesLabel(e.data.substring(0,7)+'-01')}</td></tr>`:''}
+              <tr style="border-bottom:1px solid var(--border);${isSelected?'background:rgba(99,102,241,.08);border-left:3px solid var(--accent)':''}" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='${isSelected?'rgba(99,102,241,.08)':''}'">
                 <td style="padding:9px 14px;font-size:13px;font-weight:700">${caixaFmtDate(e.data)}</td>
                 <td style="padding:9px 10px;font-size:11px;color:var(--muted)">${caixaMesLabel(e.data.substring(0,7)+'-01')}</td>
                 ${hasCaixaIF?`
@@ -7032,21 +7086,20 @@ function caixaRenderSemanal(el,all,mesesDisp){
 
   requestAnimationFrame(()=>{
     if(typeof Chart==='undefined')return;
-    const lb=all.map(e=>caixaFmtDate(e.data));
+    const lb=filtered.map(e=>caixaFmtDate(e.data));
     const bo=cxBaseOpts();
-    // Evolução
     cxMkChart('cx-sem-evol',{type:'line',data:{labels:lb,datasets:[
-      {label:'Saldo',data:all.map(e=>e.saldo),borderColor:'#3b82f6',backgroundColor:'transparent',tension:.35,pointRadius:4,pointBackgroundColor:'#3b82f6'},
-      {label:'IFood',data:all.map(e=>e.ifood||0),borderColor:'#f59e0b',backgroundColor:'transparent',tension:.35,pointRadius:3,borderDash:[4,2]},
-      {label:'Devedor',data:all.map(e=>e.devedor||0),borderColor:'#ef4444',backgroundColor:'transparent',tension:.35,pointRadius:3,borderDash:[4,2]},
+      {label:'Saldo',data:filtered.map(e=>e.saldo),borderColor:'#3b82f6',backgroundColor:'transparent',tension:.35,pointRadius:4,pointBackgroundColor:'#3b82f6'},
+      {label:'IFood',data:filtered.map(e=>e.ifood||0),borderColor:'#f59e0b',backgroundColor:'transparent',tension:.35,pointRadius:3,borderDash:[4,2]},
+      {label:'Devedor',data:filtered.map(e=>e.devedor||0),borderColor:'#ef4444',backgroundColor:'transparent',tension:.35,pointRadius:3,borderDash:[4,2]},
     ]},options:bo});
     if(hasCaixaIF){
       cxMkChart('cx-sem-if',{type:'bar',data:{labels:lb,datasets:[
-        {label:'Cx. Inicial',data:all.map(e=>e.caixaInicial||0),backgroundColor:'rgba(148,163,184,.70)',borderRadius:4},
-        {label:'Cx. Final',data:all.map(e=>e.caixaFinal||0),backgroundColor:all.map(e=>(e.caixaFinal||0)>=(e.caixaInicial||0)?'rgba(34,197,94,.80)':'rgba(239,68,68,.75)'),borderRadius:4},
+        {label:'Cx. Inicial',data:filtered.map(e=>e.caixaInicial||0),backgroundColor:'rgba(148,163,184,.70)',borderRadius:4},
+        {label:'Cx. Final',data:filtered.map(e=>e.caixaFinal||0),backgroundColor:filtered.map(e=>(e.caixaFinal||0)>=(e.caixaInicial||0)?'rgba(34,197,94,.80)':'rgba(239,68,68,.75)'),borderRadius:4},
       ]},options:bo});
     }
-    cxMkChart('cx-sem-proj',{type:'bar',data:{labels:lb,datasets:[{label:'Projeção',data:all.map(e=>e.projecao||0),backgroundColor:all.map(e=>(e.projecao||0)>=0?'rgba(34,197,94,.80)':'rgba(239,68,68,.75)'),borderRadius:4}]},options:{...bo,plugins:{...bo.plugins,legend:{display:false}}}});
+    cxMkChart('cx-sem-proj',{type:'bar',data:{labels:lb,datasets:[{label:'Projeção',data:filtered.map(e=>e.projecao||0),backgroundColor:filtered.map(e=>(e.projecao||0)>=0?'rgba(34,197,94,.80)':'rgba(239,68,68,.75)'),borderRadius:4}]},options:{...bo,plugins:{...bo.plugins,legend:{display:false}}}});
   });
 }
 
@@ -7146,6 +7199,7 @@ function caixaRenderAnual(el,all,mesesDisp){
         <thead><tr style="background:#111;color:#fff">
           <th style="padding:10px 14px;font-size:10px;text-align:left;text-transform:uppercase">Mês</th>
           <th style="padding:10px 10px;font-size:10px;text-align:center;text-transform:uppercase">Semanas</th>
+          <th style="padding:10px 10px;font-size:10px;text-align:right;text-transform:uppercase">Saldo Inicial</th>
           <th style="padding:10px 10px;font-size:10px;text-align:right;text-transform:uppercase">Saldo Final</th>
           <th style="padding:10px 10px;font-size:10px;text-align:right;text-transform:uppercase">Var. no Mês</th>
           <th style="padding:10px 10px;font-size:10px;text-align:right;text-transform:uppercase">IFood Médio</th>
@@ -7160,6 +7214,7 @@ function caixaRenderAnual(el,all,mesesDisp){
             return `<tr style="border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
               <td style="padding:10px 14px;font-size:13px;font-weight:700">${x.label}</td>
               <td style="padding:10px 10px;font-size:12px;text-align:center;color:var(--muted)">${x.semanasTot}</td>
+              <td style="padding:10px 10px;font-size:13px;text-align:right;color:var(--muted)">${caixaFmtK(x.prim.saldo)}</td>
               <td style="padding:10px 10px;font-size:13px;text-align:right;font-weight:700">
                 ${caixaFmtK(x.ultSaldo)}
                 ${varVsAnt!==null?`<br><span style="font-size:10px;color:${caixaClr(varVsAnt)}">${caixaArrw(varVsAnt)} ${caixaFmtK(Math.abs(varVsAnt))}</span>`:''}
