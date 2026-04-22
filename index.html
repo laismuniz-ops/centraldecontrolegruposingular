@@ -2313,26 +2313,34 @@ function buildAnual2026HTML() {
     const meta=parseNum(s.meta)||null, real=parseNum(s.real)||null, ped26=parseNum(s.ped)||null;
     const tick25=fat25&&ped25?fat25/ped25:null, tick26=real&&ped26?real/ped26:null;
     const pct=meta&&real?real/meta:null;
+    const nota=s.nota||'';
     if(fat25){tF25+=fat25;sF25+=fat25;cP25+=ped25||0;}
     if(ped25) tP25+=ped25;
     if(meta)  tMeta+=meta;
     if(real)  {tReal+=real;sF26+=real;cP26+=ped26||0;}
     if(ped26) tP26+=ped26;
     const rowColor = pct==null ? '' : pct>=1 ? 'rgba(34,197,94,.06)' : pct>=.8 ? 'rgba(245,158,11,.06)' : 'rgba(239,68,68,.06)';
-    const realColor = pct==null ? 'var(--text)' : pct>=1 ? '#16a34a' : pct>=.8 ? '#d97706' : '#dc2626';
     const leftBorder = pct==null ? '' : `border-left:3px solid ${pct>=1?'#22c55e':pct>=.8?'#f59e0b':'#ef4444'};`;
     return `<tr style="${rowColor?`background:${rowColor};`:''}${leftBorder}">
       <td style="font-weight:600;white-space:nowrap">${mes}</td>
       <td style="font-weight:500">${fat25!=null?R(fat25):'<span style="color:var(--muted)">—</span>'}</td>
       <td style="color:var(--muted)">${ped25!=null?N(ped25):'—'}</td>
       <td style="color:var(--muted)">${tick25!=null?R(tick25):'—'}</td>
-      <td><input type="number" value="${meta||''}" placeholder="—" style="${iStyle};width:100px;border-color:rgba(0,0,0,.2)"
+      <td><input type="number" value="${meta||''}" placeholder="—" style="${iStyle};width:100px"
         data-prefixo="sing_anual" data-ano="${ano}" data-mes="${i}" data-campo="meta"
         onchange="salvarCampoAnual(this)"></td>
-      <td style="font-weight:700;color:${realColor}">${real!=null?R(real):'<span style="color:var(--muted)">—</span>'}</td>
+      <td><input type="number" value="${real!=null?real:''}" placeholder="—" style="${iStyle};width:110px;${pct!=null?`border-color:${pct>=1?'#22c55e':pct>=.8?'#f59e0b':'#ef4444'}`:'border-color:rgba(0,0,0,.2)'}"
+        data-prefixo="sing_anual" data-ano="${ano}" data-mes="${i}" data-campo="real"
+        onchange="salvarCampoAnual(this)" title="Preenchido automaticamente ao subir relatório. Editável."></td>
       <td>${pct!=null?`<span class="badge ${pct>=1?'green':pct>=.8?'yellow':'red'}">${P(pct)}</span>`:'—'}</td>
-      <td style="color:var(--muted)">${ped26!=null?N(ped26):'—'}</td>
+      <td><input type="number" value="${ped26!=null?ped26:''}" placeholder="—" style="${iStyle};width:80px"
+        data-prefixo="sing_anual" data-ano="${ano}" data-mes="${i}" data-campo="ped"
+        onchange="salvarCampoAnual(this)"></td>
       <td style="color:var(--muted)">${tick26!=null?R(tick26):'—'}</td>
+      <td><textarea data-prefixo="sing_anual" data-ano="${ano}" data-mes="${i}" data-campo="nota"
+        onchange="salvarCampoAnual(this)"
+        style="${iStyle};width:150px;min-height:34px;resize:vertical;line-height:1.4;transition:border-color .3s"
+        placeholder="Anotação do mês...">${nota}</textarea></td>
     </tr>`;
   }).join('');
   const totPct=tMeta&&tReal?tReal/tMeta:null;
@@ -2344,18 +2352,26 @@ function buildAnual2026HTML() {
     const s = JSON.parse(storeGet(`sing_anual_brisa_${ano}_${i}`)||'{}');
     const meta=parseNum(s.meta)||null, real=parseNum(s.real)||null, ped=parseNum(s.ped)||null;
     const tick=real&&ped?real/ped:null, pct=meta&&real?real/meta:null;
+    const nota=s.nota||'';
     if(meta) bMeta+=meta;
     if(real) {bReal+=real; bPed+=ped||0;}
-    const hasData = meta||real;
     return `<tr${real!=null?' style="background:rgba(180,180,180,.03)"':''}>
       <td style="font-weight:600;white-space:nowrap">${mes}</td>
-      <td><input type="number" value="${meta||''}" placeholder="—" style="${iStyle};width:100px;border-color:rgba(0,0,0,.2)"
+      <td><input type="number" value="${meta||''}" placeholder="—" style="${iStyle};width:100px"
         data-prefixo="sing_anual_brisa" data-ano="${ano}" data-mes="${i}" data-campo="meta"
         onchange="salvarCampoAnual(this)"></td>
-      <td style="font-weight:700">${real!=null?R(real):'<span style="color:var(--muted)">—</span>'}</td>
+      <td><input type="number" value="${real!=null?real:''}" placeholder="—" style="${iStyle};width:110px;${pct!=null?`border-color:${pct>=1?'#22c55e':pct>=.8?'#f59e0b':'#ef4444'}`:'border-color:rgba(0,0,0,.2)'}"
+        data-prefixo="sing_anual_brisa" data-ano="${ano}" data-mes="${i}" data-campo="real"
+        onchange="salvarCampoAnual(this)"></td>
       <td>${pct!=null?`<span class="badge ${pct>=1?'green':pct>=.8?'yellow':'red'}">${P(pct)}</span>`:'—'}</td>
-      <td style="color:var(--muted)">${ped!=null?N(ped):'—'}</td>
+      <td><input type="number" value="${ped!=null?ped:''}" placeholder="—" style="${iStyle};width:80px"
+        data-prefixo="sing_anual_brisa" data-ano="${ano}" data-mes="${i}" data-campo="ped"
+        onchange="salvarCampoAnual(this)"></td>
       <td style="color:var(--muted)">${tick!=null?R(tick):'—'}</td>
+      <td><textarea data-prefixo="sing_anual_brisa" data-ano="${ano}" data-mes="${i}" data-campo="nota"
+        onchange="salvarCampoAnual(this)"
+        style="${iStyle};width:150px;min-height:34px;resize:vertical;line-height:1.4;transition:border-color .3s"
+        placeholder="Anotação...">${nota}</textarea></td>
     </tr>`;
   }).join('');
   const bPct=bMeta&&bReal?bReal/bMeta:null;
@@ -2368,18 +2384,29 @@ function buildAnual2026HTML() {
     const pedSalao=parseNum(s.pedSalao)||null, pedDel=parseNum(s.pedDel)||null;
     const totPed=(pedSalao||0)+(pedDel||0);
     const tick=real&&totPed?real/totPed:null, pct=meta&&real?real/meta:null;
+    const nota=s.nota||'';
     if(meta) fMeta+=meta;
     if(real) {fReal+=real; fPS+=pedSalao||0; fPD+=pedDel||0;}
     return `<tr${real!=null?' style="background:rgba(180,180,180,.03)"':''}>
       <td style="font-weight:600;white-space:nowrap">${mes}</td>
-      <td><input type="number" value="${meta||''}" placeholder="—" style="${iStyle};width:100px;border-color:rgba(0,0,0,.2)"
+      <td><input type="number" value="${meta||''}" placeholder="—" style="${iStyle};width:100px"
         data-prefixo="sing_anual_filial" data-ano="${ano}" data-mes="${i}" data-campo="meta"
         onchange="salvarCampoAnual(this)"></td>
-      <td style="font-weight:700">${real!=null?R(real):'<span style="color:var(--muted)">—</span>'}</td>
+      <td><input type="number" value="${real!=null?real:''}" placeholder="—" style="${iStyle};width:110px;${pct!=null?`border-color:${pct>=1?'#22c55e':pct>=.8?'#f59e0b':'#ef4444'}`:'border-color:rgba(0,0,0,.2)'}"
+        data-prefixo="sing_anual_filial" data-ano="${ano}" data-mes="${i}" data-campo="real"
+        onchange="salvarCampoAnual(this)"></td>
       <td>${pct!=null?`<span class="badge ${pct>=1?'green':pct>=.8?'yellow':'red'}">${P(pct)}</span>`:'—'}</td>
-      <td style="color:var(--muted)">${pedSalao!=null?N(pedSalao):'—'}</td>
-      <td style="color:var(--muted)">${pedDel!=null?N(pedDel):'—'}</td>
+      <td><input type="number" value="${pedSalao!=null?pedSalao:''}" placeholder="—" style="${iStyle};width:75px"
+        data-prefixo="sing_anual_filial" data-ano="${ano}" data-mes="${i}" data-campo="pedSalao"
+        onchange="salvarCampoAnual(this)"></td>
+      <td><input type="number" value="${pedDel!=null?pedDel:''}" placeholder="—" style="${iStyle};width:75px"
+        data-prefixo="sing_anual_filial" data-ano="${ano}" data-mes="${i}" data-campo="pedDel"
+        onchange="salvarCampoAnual(this)"></td>
       <td style="color:var(--muted)">${tick!=null?R(tick):'—'}</td>
+      <td><textarea data-prefixo="sing_anual_filial" data-ano="${ano}" data-mes="${i}" data-campo="nota"
+        onchange="salvarCampoAnual(this)"
+        style="${iStyle};width:150px;min-height:34px;resize:vertical;line-height:1.4;transition:border-color .3s"
+        placeholder="Anotação...">${nota}</textarea></td>
     </tr>`;
   }).join('');
   const fPct=fMeta&&fReal?fReal/fMeta:null;
@@ -2421,6 +2448,7 @@ function buildAnual2026HTML() {
             <th rowspan="2" style="vertical-align:bottom">Mês</th>
             <th colspan="3" style="text-align:center;color:var(--accent);padding-bottom:6px">2025</th>
             <th colspan="5" style="text-align:center;color:var(--accent2);padding-bottom:6px">2026</th>
+            <th rowspan="2" style="vertical-align:bottom;color:var(--muted)">📝 Nota</th>
           </tr>
           <tr>
             <th>Faturamento</th><th>Pedidos</th><th>Ticket médio</th>
@@ -2434,6 +2462,7 @@ function buildAnual2026HTML() {
           <td><b>${R(tMeta)}</b></td><td><b>${R(tReal)}</b></td>
           <td>${totPct!=null?`<span class="badge ${totPct>=1?'green':totPct>=.8?'yellow':'red'}">${P(totPct)}</span>`:'—'}</td>
           <td>${N(tP26)}</td><td>${totTick26!=null?R(totTick26):'—'}</td>
+          <td></td>
         </tr></tfoot>
       </table>
     </div>
@@ -2441,12 +2470,12 @@ function buildAnual2026HTML() {
     <div class="section-divider">Brisa Sushi</div>
     <div class="table-box" style="margin-bottom:20px">
       <table>
-        <thead><tr><th>Mês</th><th>Meta</th><th>Realizado</th><th>% Meta</th><th>Pedidos</th><th>Ticket médio</th></tr></thead>
+        <thead><tr><th>Mês</th><th>Meta</th><th>Realizado</th><th>% Meta</th><th>Pedidos</th><th>Ticket médio</th><th style="color:var(--muted)">📝 Nota</th></tr></thead>
         <tbody>${rowsBrisa}</tbody>
         <tfoot><tr class="total-row">
           <td><b>TOTAL</b></td><td><b>${bMeta?R(bMeta):'—'}</b></td><td><b>${R(bReal)}</b></td>
           <td>${bPct!=null?`<span class="badge ${bPct>=1?'green':bPct>=.8?'yellow':'red'}">${P(bPct)}</span>`:'—'}</td>
-          <td>${N(bPed)}</td><td>—</td>
+          <td>${N(bPed)}</td><td>—</td><td></td>
         </tr></tfoot>
       </table>
     </div>
@@ -2460,13 +2489,13 @@ function buildAnual2026HTML() {
             <th colspan="3" style="text-align:center;color:var(--accent2);padding-bottom:6px">2026</th>
             <th colspan="3" style="text-align:center;color:var(--muted);padding-bottom:6px">Pedidos</th>
           </tr>
-          <tr><th>Meta</th><th>Realizado</th><th>% Meta</th><th>Salão</th><th>Delivery</th><th>Ticket médio</th></tr>
+          <tr><th>Meta</th><th>Realizado</th><th>% Meta</th><th>Salão</th><th>Delivery</th><th>Ticket médio</th><th style="color:var(--muted)">📝 Nota</th></tr>
         </thead>
         <tbody>${rowsFilial}</tbody>
         <tfoot><tr class="total-row">
           <td><b>TOTAL</b></td><td><b>${fMeta?R(fMeta):'—'}</b></td><td><b>${R(fReal)}</b></td>
           <td>${fPct!=null?`<span class="badge ${fPct>=1?'green':fPct>=.8?'yellow':'red'}">${P(fPct)}</span>`:'—'}</td>
-          <td>${N(fPS)}</td><td>${N(fPD)}</td><td>—</td>
+          <td>${N(fPS)}</td><td>${N(fPD)}</td><td>—</td><td></td>
         </tr></tfoot>
       </table>
     </div>`;
@@ -2477,6 +2506,15 @@ function salvarCampoAnual(input) {
   const { prefixo, ano, mes, campo } = input.dataset;
   const key = `${prefixo}_${ano}_${mes}`;
   const saved = JSON.parse(storeGet(key)||'{}');
+  // Notas: salvar como texto sem re-renderizar
+  if (campo === 'nota') {
+    saved[campo] = input.value;
+    storeSet(key, JSON.stringify(saved));
+    // feedback visual sutil
+    input.style.borderColor = '#22c55e';
+    setTimeout(() => { input.style.borderColor = ''; }, 1200);
+    return;
+  }
   saved[campo] = parseFloat(input.value)||null;
   storeSet(key, JSON.stringify(saved));
   const panel = document.getElementById('panel-txn-anual');
