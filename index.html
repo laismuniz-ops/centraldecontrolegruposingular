@@ -7299,57 +7299,110 @@ function iaColetarDadosCaixa(){
 // ══════════════════════════════════════════════════════════════
 // MODAL — Adicionar / Editar lançamento
 // ══════════════════════════════════════════════════════════════
+function caixaRecalcular(){
+  const g=k=>{const el=document.getElementById('cx-f-'+k);return parseFloat(el?.value)||0;};
+  const saldo=g('fisico')+g('sangria')+g('sicoob')+g('itau')+g('tesouraria')+g('ifood')+g('rede')+g('aporte')+g('outros');
+  const projecao=saldo-g('devedor');
+  const fs=document.getElementById('cx-f-saldo');
+  const fp=document.getElementById('cx-f-projecao');
+  if(fs){fs.value=saldo.toFixed(2);fs.style.color=saldo>0?'#22c55e':'var(--text)';}
+  if(fp){fp.value=projecao.toFixed(2);fp.style.color=projecao>=0?'#22c55e':'#ef4444';}
+}
+
 function caixaAbrirModal(id){
   const entries=caixaLoad();
   const entry=id?entries.find(e=>e._id===id):null;
   const v=k=>entry?(entry[k]??''):'';
-  const flds=[
-    {k:'data',        l:'Data',              t:'date',  req:true, full:true},
-    {k:'caixaInicial',l:'Caixa Inicial',     t:'number',ph:'Saldo no início da semana'},
-    {k:'caixaFinal',  l:'Caixa Final',       t:'number',ph:'Saldo no fim da semana'},
-    {k:'saldo',       l:'Saldo Total',       t:'number',req:true,ph:'Total geral'},
-    {k:'fisico',      l:'Caixa Físico',      t:'number',ph:'0,00'},
-    {k:'sangria',     l:'Caixa Sangria',     t:'number',ph:'0,00'},
-    {k:'sicoob',      l:'Sicoob',            t:'number',ph:'0,00'},
-    {k:'itau',        l:'Itaú',              t:'number',ph:'0,00'},
-    {k:'tesouraria',  l:'Caixa Tesouraria',  t:'number',ph:'0,00'},
-    {k:'ifood',       l:'IFood (a receber)', t:'number',ph:'0,00'},
-    {k:'rede',        l:'Rede (a receber)',  t:'number',ph:'0,00'},
-    {k:'aporte',      l:'Aporte',            t:'number',ph:'0,00'},
-    {k:'outros',      l:'Outros',            t:'number',ph:'0,00'},
-    {k:'devedor',     l:'Devedor',           t:'number',ph:'0,00'},
-    {k:'projecao',    l:'Projeção de Caixa', t:'number',ph:'Negativo = déficit',full:true},
+  const iStyle='width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit;box-sizing:border-box';
+  const calcStyle='width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--accent);background:rgba(99,102,241,.07);font-size:14px;font-weight:800;font-family:inherit;box-sizing:border-box;cursor:default;outline:none';
+  const manual=[
+    {k:'fisico',      l:'Caixa Físico',      ph:'0,00'},
+    {k:'sangria',     l:'Caixa Sangria',     ph:'0,00'},
+    {k:'sicoob',      l:'Sicoob',            ph:'0,00'},
+    {k:'itau',        l:'Itaú',              ph:'0,00'},
+    {k:'tesouraria',  l:'Caixa Tesouraria',  ph:'0,00'},
+    {k:'ifood',       l:'IFood (a receber)', ph:'0,00'},
+    {k:'rede',        l:'Rede (a receber)',  ph:'0,00'},
+    {k:'aporte',      l:'Aporte',            ph:'0,00'},
+    {k:'outros',      l:'Outros',            ph:'0,00'},
+    {k:'devedor',     l:'Devedor',           ph:'0,00'},
   ];
+  const saldoV=entry?entry.saldo:0;
+  const projecaoV=entry?entry.projecao:0;
   const ov=document.createElement('div');
   ov.id='cx-modal-ov';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
   ov.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto">
     <div style="font-size:16px;font-weight:800;margin-bottom:18px">${entry?'✏️ Editar Lançamento':'+ Novo Lançamento de Caixa'}</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px">
-      ${flds.map(f=>`<div style="${f.full?'grid-column:1/-1':''}">
-        <label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">${f.l}${f.req?' *':''}</label>
-        <input id="cx-f-${f.k}" type="${f.t}" value="${v(f.k)}" placeholder="${f.ph||''}"
-          style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit;box-sizing:border-box">
+
+    <!-- Data -->
+    <div style="margin-bottom:14px">
+      <label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Data *</label>
+      <input id="cx-f-data" type="date" value="${v('data')}" style="${iStyle}">
+    </div>
+
+    <!-- Caixa Inicial / Final -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:14px">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Caixa Inicial</label>
+        <input id="cx-f-caixaInicial" type="number" value="${v('caixaInicial')}" placeholder="0,00" style="${iStyle}">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Caixa Final</label>
+        <input id="cx-f-caixaFinal" type="number" value="${v('caixaFinal')}" placeholder="0,00" style="${iStyle}">
+      </div>
+    </div>
+
+    <!-- Divisor componentes -->
+    <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">Componentes do Saldo</div>
+
+    <!-- Campos manuais em grid -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:16px">
+      ${manual.map(f=>`<div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">${f.l}</label>
+        <input id="cx-f-${f.k}" type="number" value="${v(f.k)||''}" placeholder="${f.ph}"
+          oninput="caixaRecalcular()"
+          style="${iStyle}">
       </div>`).join('')}
     </div>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+
+    <!-- Calculados -->
+    <div style="font-size:10px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--accent)30">Calculado automaticamente</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:20px">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Saldo Total</label>
+        <input id="cx-f-saldo" type="number" value="${saldoV}" readonly tabindex="-1"
+          style="${calcStyle};color:${saldoV>0?'#22c55e':'var(--text)'}">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Projeção de Caixa</label>
+        <input id="cx-f-projecao" type="number" value="${projecaoV}" readonly tabindex="-1"
+          style="${calcStyle};color:${projecaoV>=0?'#22c55e':'#ef4444'}">
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end">
       <button onclick="document.getElementById('cx-modal-ov').remove()" style="padding:9px 20px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;font-weight:600">Cancelar</button>
       <button onclick="caixaSalvarModal('${id||''}')" style="padding:9px 20px;border-radius:8px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-family:inherit;font-weight:700">💾 Salvar</button>
     </div>
   </div>`;
   document.body.appendChild(ov);
+  // Recalcular ao abrir (caso seja edição)
+  if(entry) caixaRecalcular();
 }
 
 function caixaSalvarModal(id){
   const get=k=>{const el=document.getElementById('cx-f-'+k);if(!el)return null;return el.type==='number'?parseFloat(el.value)||0:el.value.trim();};
   const data=get('data');
   if(!data){alert('Data é obrigatória.');return;}
+  // Recalcular antes de salvar para garantir consistência
+  const fisico=get('fisico'),sangria=get('sangria'),sicoob=get('sicoob'),itau=get('itau'),
+    tesouraria=get('tesouraria'),ifood=get('ifood'),rede=get('rede'),aporte=get('aporte'),outros=get('outros'),devedor=get('devedor');
+  const saldo=fisico+sangria+sicoob+itau+tesouraria+ifood+rede+aporte+outros;
+  const projecao=saldo-devedor;
   const entry={_id:id||caixaUuid(),data,
     caixaInicial:get('caixaInicial'),caixaFinal:get('caixaFinal'),
-    saldo:get('saldo'),fisico:get('fisico'),sangria:get('sangria'),
-    sicoob:get('sicoob'),itau:get('itau'),tesouraria:get('tesouraria'),
-    ifood:get('ifood'),rede:get('rede'),aporte:get('aporte'),
-    outros:get('outros'),devedor:get('devedor'),projecao:get('projecao')};
+    saldo,fisico,sangria,sicoob,itau,tesouraria,ifood,rede,aporte,outros,devedor,projecao};
   const entries=caixaLoad();
   if(id){const i=entries.findIndex(e=>e._id===id);if(i>=0)entries[i]=entry;else entries.push(entry);}
   else entries.push(entry);
