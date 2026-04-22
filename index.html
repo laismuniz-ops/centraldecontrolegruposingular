@@ -6596,195 +6596,194 @@ function salvarNota(){
 }
 
 
+
 // ════════════════════════════════════════════════════════════════
-// SALDO DE CAIXA — Módulo completo
+// SALDO DE CAIXA — Módulo completo (Grupo Singular · por mês)
 // ════════════════════════════════════════════════════════════════
-const CAIXA_KEY = 'sing_caixa_v1';
+const CAIXA_KEY = 'sing_caixa_v2';
+const CAIXA_MESES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function caixaMesLabel(iso) {
+  const [y,m] = iso.split('-');
+  return CAIXA_MESES_PT[parseInt(m)-1] + '/' + y;
+}
 
 const CAIXA_SEED = [
-  // Março 2026 — Matriz
-  {_id:'cx001',data:'2026-03-02',entidade:'Matriz',saldo:53534.20,fisico:815.31,sicoob:734.23,itau:20389.49,tesouraria:3872.30,ifood:27722.87,sangria:0,rede:0,aporte:0,outros:0,devedor:89209.86,projecao:-35675.66},
-  {_id:'cx002',data:'2026-03-09',entidade:'Matriz',saldo:43334.40,fisico:810.35,sicoob:162.43,itau:2437.18, tesouraria:1955.65,ifood:36968.79,sangria:0,rede:0,aporte:0,outros:1000,devedor:46967.10,projecao:-3632.70},
-  {_id:'cx003',data:'2026-03-16',entidade:'Matriz',saldo:55924.36,fisico:301.10,sicoob:1848.23,itau:17743.22,tesouraria:1955.65,ifood:34076.16,sangria:0,rede:0,aporte:0,outros:0,   devedor:67594.69,projecao:-11670.33},
-  {_id:'cx004',data:'2026-03-23',entidade:'Matriz',saldo:53421.66,fisico:1237.50,sicoob:1343.98,itau:10272.90,tesouraria:3395.65,ifood:37171.63,sangria:0,rede:0,aporte:0,outros:0,  devedor:50199.34,projecao:3222.32},
-  {_id:'cx005',data:'2026-03-30',entidade:'Matriz',saldo:69103.85,fisico:1081.70,sicoob:2061.48,itau:26467.11,tesouraria:3395.65,ifood:36097.91,sangria:0,rede:0,aporte:0,outros:0,  devedor:77886.04,projecao:-8782.19},
-  // Abril 2026 — Grupo Singular
-  {_id:'cx006',data:'2026-04-06',entidade:'Grupo Singular',saldo:66900.20,fisico:1481.50,sicoob:2570.56,itau:16223.99,tesouraria:4916.55,ifood:40707.60,sangria:900.50,rede:0,aporte:0,outros:1000,devedor:76853.10,projecao:-10952.90},
-  {_id:'cx007',data:'2026-04-13',entidade:'Grupo Singular',saldo:73499.15,fisico:384.83, sicoob:71.39,  itau:33093.17,tesouraria:1687.18,ifood:38262.58,sangria:900.50,rede:0,aporte:0,outros:0,   devedor:65612.51,projecao:7886.64},
+  // Março 2026
+  {_id:'cx001',data:'2026-03-02',saldo:53534.20,fisico:815.31,sicoob:734.23,itau:20389.49,tesouraria:3872.30,ifood:27722.87,sangria:0,rede:0,aporte:0,outros:0,devedor:89209.86,projecao:-35675.66},
+  {_id:'cx002',data:'2026-03-09',saldo:43334.40,fisico:810.35,sicoob:162.43,itau:2437.18, tesouraria:1955.65,ifood:36968.79,sangria:0,rede:0,aporte:0,outros:1000,devedor:46967.10,projecao:-3632.70},
+  {_id:'cx003',data:'2026-03-16',saldo:55924.36,fisico:301.10,sicoob:1848.23,itau:17743.22,tesouraria:1955.65,ifood:34076.16,sangria:0,rede:0,aporte:0,outros:0,devedor:67594.69,projecao:-11670.33},
+  {_id:'cx004',data:'2026-03-23',saldo:53421.66,fisico:1237.50,sicoob:1343.98,itau:10272.90,tesouraria:3395.65,ifood:37171.63,sangria:0,rede:0,aporte:0,outros:0,devedor:50199.34,projecao:3222.32},
+  {_id:'cx005',data:'2026-03-30',saldo:69103.85,fisico:1081.70,sicoob:2061.48,itau:26467.11,tesouraria:3395.65,ifood:36097.91,sangria:0,rede:0,aporte:0,outros:0,devedor:77886.04,projecao:-8782.19},
+  // Abril 2026
+  {_id:'cx006',data:'2026-04-06',saldo:66900.20,fisico:1481.50,sicoob:2570.56,itau:16223.99,tesouraria:4916.55,ifood:40707.60,sangria:900.50,rede:0,aporte:0,outros:1000,devedor:76853.10,projecao:-10952.90},
+  {_id:'cx007',data:'2026-04-13',saldo:73499.15,fisico:384.83, sicoob:71.39,  itau:33093.17,tesouraria:1687.18,ifood:38262.58,sangria:900.50,rede:0,aporte:0,outros:0,devedor:65612.51,projecao:7886.64},
 ];
 
 function caixaLoad() {
-  try {
-    const raw = localStorage.getItem(CAIXA_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch(e) {}
-  // Seed com dados do PDF
-  const data = JSON.parse(JSON.stringify(CAIXA_SEED));
-  localStorage.setItem(CAIXA_KEY, JSON.stringify(data));
-  return data;
+  try { const r = localStorage.getItem(CAIXA_KEY); if (r) return JSON.parse(r); } catch(e) {}
+  const d = JSON.parse(JSON.stringify(CAIXA_SEED));
+  localStorage.setItem(CAIXA_KEY, JSON.stringify(d));
+  return d;
 }
-function caixaSave(data) {
-  localStorage.setItem(CAIXA_KEY, JSON.stringify(data));
-}
-
+function caixaSave(d) { localStorage.setItem(CAIXA_KEY, JSON.stringify(d)); }
+function caixaUuid() { return 'cx' + Date.now() + Math.random().toString(36).slice(2,6); }
+function caixaFmtDate(iso) { const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
 function caixaFmt(v) {
-  if (v === null || v === undefined || isNaN(v)) return '—';
-  const neg = v < 0;
-  const s = 'R$ ' + Math.abs(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
-  return neg ? '-' + s : s;
+  if (v===null||v===undefined||isNaN(v)) return '—';
+  const neg=v<0; const s='R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return neg?'-'+s:s;
 }
 function caixaFmtK(v) {
-  if (!v && v !== 0) return '—';
-  const abs = Math.abs(v);
-  const s = abs >= 1000 ? 'R$ ' + (abs/1000).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}) + 'k'
-                        : 'R$ ' + abs.toLocaleString('pt-BR',{minimumFractionDigits:0});
-  return (v < 0 ? '-' : '') + s;
+  if (!v&&v!==0) return '—';
+  const abs=Math.abs(v);
+  const s=abs>=1000?'R$ '+(abs/1000).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'k'
+                   :'R$ '+abs.toLocaleString('pt-BR',{minimumFractionDigits:0});
+  return (v<0?'-':'')+s;
 }
-function caixaFmtDate(iso) {
-  const [y,m,d] = iso.split('-');
-  return `${d}/${m}/${y}`;
-}
-function caixaUuid() { return 'cx' + Date.now() + Math.random().toString(36).slice(2,6); }
 
 function caixaRender() {
   const root = document.getElementById('caixa-root');
   if (!root) return;
-  const entries = caixaLoad().sort((a,b) => a.data.localeCompare(b.data));
-  const last = entries[entries.length - 1];
+  const all = caixaLoad().sort((a,b)=>a.data.localeCompare(b.data));
 
-  // ── Métricas derivadas ──────────────────────────────────────
-  const varSaldo = entries.length >= 2 ? last.saldo - entries[entries.length-2].saldo : null;
-  const caixaReal = (last.fisico||0) + (last.sicoob||0) + (last.itau||0) + (last.tesouraria||0) + (last.sangria||0);
-  const ifoodPct = last.saldo > 0 ? (last.ifood / last.saldo * 100) : 0;
-  const devedorRatio = last.saldo > 0 ? (last.devedor / last.saldo * 100) : 0;
-  const projecaoPositiva = (last.projecao || 0) >= 0;
+  // Meses disponíveis
+  const mesesDisp = [...new Set(all.map(e=>e.data.substring(0,7)))].sort();
+  const mesFiltro = window._caixaMesFiltro || mesesDisp[mesesDisp.length-1] || '';
+  window._caixaMesFiltro = mesFiltro;
 
-  const clr = v => v >= 0 ? '#22c55e' : '#ef4444';
-  const clrBg = v => v >= 0 ? 'rgba(34,197,94,.12)' : 'rgba(239,68,68,.12)';
-  const arrow = v => v > 0 ? '↑' : v < 0 ? '↓' : '→';
+  const filtered = mesFiltro ? all.filter(e=>e.data.startsWith(mesFiltro)) : all;
+  const allMes   = all; // para gráfico cross-mês
 
-  // ── Entidades distintas para filtro ───────────────────────
-  const entidades = [...new Set(entries.map(e => e.entidade))];
-  const [_caixaFiltroEnt, setCaixaFiltroEnt] = (() => {
-    let v = window._caixaFiltroEnt || 'Todos';
-    return [() => v, (x) => { v = x; window._caixaFiltroEnt = x; }];
-  })();
-  const filtroAtivo = _caixaFiltroEnt();
-  const filtered = filtroAtivo === 'Todos' ? entries : entries.filter(e => e.entidade === filtroAtivo);
-  const lastF = filtered[filtered.length - 1] || last;
+  const last = filtered[filtered.length-1] || all[all.length-1];
+  if (!last) { root.innerHTML = '<p style="color:var(--muted);padding:40px">Nenhum dado ainda. Adicione o primeiro lançamento.</p>'; return; }
+
+  const clr  = v => v>=0?'#22c55e':'#ef4444';
+  const clrBg= v => v>=0?'rgba(34,197,94,.12)':'rgba(239,68,68,.12)';
+  const arrw = v => v>0?'↑':v<0?'↓':'→';
+
+  // Métricas do último registro do mês selecionado
+  const prev    = filtered[filtered.length-2] || null;
+  const varSaldo= prev ? last.saldo - prev.saldo : null;
+  const caixaReal=(last.fisico||0)+(last.sicoob||0)+(last.itau||0)+(last.tesouraria||0)+(last.sangria||0);
+  const ifoodPct = last.saldo>0 ? (last.ifood/last.saldo*100) : 0;
+  const devRatio = last.saldo>0 ? (last.devedor/last.saldo*100) : 0;
+
+  // Médias do mês
+  const media = k => filtered.length ? filtered.reduce((s,e)=>s+(e[k]||0),0)/filtered.length : 0;
+  const mediaSaldo = media('saldo');
+  const mediaIfood = media('ifood');
+  const mediaDevedor = media('devedor');
 
   root.innerHTML = `
     <!-- Header -->
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:22px">
       <div>
-        <div style="font-size:20px;font-weight:800;letter-spacing:-.02em">💰 Saldo de Caixa</div>
-        <p style="font-size:12px;color:var(--muted);margin-top:3px">Acompanhamento semanal · Grupo Singular</p>
+        <div style="font-size:20px;font-weight:800;letter-spacing:-.02em">💰 Saldo de Caixa — Grupo Singular</div>
+        <p style="font-size:12px;color:var(--muted);margin-top:3px">Acompanhamento semanal · ${caixaMesLabel(mesFiltro+'-01')}</p>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <div style="display:flex;gap:4px">
-          ${['Todos',...entidades].map(e=>`
-            <button onclick="window._caixaFiltroEnt='${e}';caixaRender()" style="padding:5px 12px;border-radius:99px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid ${filtroAtivo===e?'var(--accent)':'var(--border)'};background:${filtroAtivo===e?'var(--accent)':'transparent'};color:${filtroAtivo===e?'#fff':'var(--muted)'};">${e}</button>`).join('')}
+        <!-- Filtro por mês -->
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${mesesDisp.map(m=>`
+            <button onclick="window._caixaMesFiltro='${m}';caixaRender()"
+              style="padding:5px 12px;border-radius:99px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid ${mesFiltro===m?'var(--accent)':'var(--border)'};background:${mesFiltro===m?'var(--accent)':'transparent'};color:${mesFiltro===m?'#fff':'var(--muted)'}">
+              ${caixaMesLabel(m+'-01')}
+            </button>`).join('')}
         </div>
         <button onclick="caixaAbrirModal()" style="padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:none;background:var(--accent);color:#fff">+ Novo Lançamento</button>
       </div>
     </div>
 
     <!-- KPI cards -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;margin-bottom:22px">
-      ${kpiCard('Saldo Atual', lastF.saldo, varSaldo, 'Disponível total (caixa + a receber)', '#3b82f6')}
-      ${kpiCard('Caixa Real', caixaReal, null, 'Físico + Sicoob + Itaú + Tesouraria', '#6366f1')}
-      ${kpiCard('IFood a Receber', lastF.ifood, null, ifoodPct.toFixed(1)+'% do saldo', '#f59e0b')}
-      ${kpiCard('Devedor', lastF.devedor, null, (devedorRatio).toFixed(0)+'% do saldo — obrigações', '#ef4444')}
-      ${kpiCard('Projeção de Caixa', lastF.projecao, null, lastF.projecao >= 0 ? '✅ Projeção positiva' : '⚠️ Projeção negativa', lastF.projecao >= 0 ? '#22c55e' : '#ef4444')}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:12px;margin-bottom:20px">
+      ${cxKpi('Último Saldo',last.saldo,varSaldo,'Posição mais recente do mês','#3b82f6')}
+      ${cxKpi('Caixa Real',caixaReal,null,'Físico + Sicoob + Itaú + Tesouraria','#6366f1')}
+      ${cxKpi('IFood a Receber',last.ifood,null,ifoodPct.toFixed(1)+'% do saldo','#f59e0b')}
+      ${cxKpi('Devedor',last.devedor,null,devRatio.toFixed(0)+'% do saldo','#ef4444')}
+      ${cxKpi('Projeção',last.projecao,null,last.projecao>=0?'✅ Positiva':'⚠️ Negativa',last.projecao>=0?'#22c55e':'#ef4444')}
+      ${cxKpi('Média do Mês',mediaSaldo,null,filtered.length+' semanas registradas','#14b8a6')}
     </div>
 
-    <!-- Insights rápidos -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-bottom:22px">
-      ${insightCard('📱 Dependência IFood', ifoodPct.toFixed(1)+'% do saldo',
-        ifoodPct > 60 ? 'Alta concentração em recebíveis IFood. Risco de liquidez imediata.' :
-        ifoodPct > 40 ? 'Concentração moderada em IFood. Atenção ao prazo de repasse.' :
-        'Boa diversificação de fontes de caixa.',
-        ifoodPct > 60 ? '#ef4444' : ifoodPct > 40 ? '#f59e0b' : '#22c55e')}
-      ${insightCard('📊 Carga de Dívida', (devedorRatio).toFixed(0)+'% do saldo',
-        devedorRatio > 100 ? 'Devedor supera o saldo! Atenção urgente ao fluxo.' :
-        devedorRatio > 80 ? 'Devedor alto em relação ao saldo. Acompanhar de perto.' :
-        'Devedor em nível aceitável.',
-        devedorRatio > 100 ? '#ef4444' : devedorRatio > 80 ? '#f59e0b' : '#22c55e')}
-      ${insightCard('📈 Tendência do Saldo',
-        entries.length >= 2 ? arrow(lastF.saldo - (filtered[filtered.length-2]?.saldo||lastF.saldo)) + ' ' + caixaFmtK(lastF.saldo - (filtered[filtered.length-2]?.saldo||lastF.saldo)) : 'Sem histórico',
-        entries.length >= 2
-          ? (lastF.saldo > (filtered[filtered.length-2]?.saldo||lastF.saldo) ? 'Saldo crescendo em relação à semana anterior.' : 'Saldo caindo em relação à semana anterior.')
-          : 'Adicione mais lançamentos para ver tendência.',
-        entries.length >= 2
-          ? (lastF.saldo >= (filtered[filtered.length-2]?.saldo||lastF.saldo) ? '#22c55e' : '#ef4444')
-          : '#6366f1')}
-      ${insightCard('🏦 Liquidez Imediata', (() => {
-        const r = lastF.saldo > 0 ? (caixaReal / lastF.saldo * 100).toFixed(0) : 0;
-        return r + '% em conta/físico';
-      })(),
-        (() => {
-          const r = lastF.saldo > 0 ? caixaReal / lastF.saldo : 0;
-          return r < 0.3 ? 'Mais de 70% do saldo está em recebíveis. Liquidez imediata baixa.'
-               : r < 0.5 ? 'Liquidez imediata moderada. Depende de repasses IFood.'
-               : 'Boa liquidez imediata em contas bancárias/físico.';
-        })(),
-        (() => {
-          const r = lastF.saldo > 0 ? caixaReal / lastF.saldo : 0;
-          return r < 0.3 ? '#ef4444' : r < 0.5 ? '#f59e0b' : '#22c55e';
-        })())}
+    <!-- Insights -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-bottom:20px">
+      ${cxInsight('📱 Dependência IFood', ifoodPct.toFixed(1)+'% do saldo',
+        ifoodPct>60?'Alta concentração em recebíveis IFood. Risco de liquidez imediata.':
+        ifoodPct>40?'Concentração moderada. Atenção ao prazo de repasse do IFood.':
+        'Boa diversificação. Menor exposição a recebíveis.',
+        ifoodPct>60?'#ef4444':ifoodPct>40?'#f59e0b':'#22c55e')}
+      ${cxInsight('📊 Carga de Dívida', devRatio.toFixed(0)+'% do saldo',
+        devRatio>100?'Devedor supera o saldo! Atenção urgente ao fluxo de caixa.':
+        devRatio>80?'Devedor alto. Acompanhar recebimentos de perto.':
+        'Devedor em nível controlado.',
+        devRatio>100?'#ef4444':devRatio>80?'#f59e0b':'#22c55e')}
+      ${cxInsight('🏦 Liquidez Imediata', (last.saldo>0?(caixaReal/last.saldo*100).toFixed(0):0)+'% em conta/físico',
+        (()=>{const r=last.saldo>0?caixaReal/last.saldo:0;
+          return r<0.3?'Mais de 70% em recebíveis. Liquidez imediata baixa.':
+                 r<0.5?'Liquidez moderada. Depende de repasses do IFood.':
+                 'Boa liquidez em contas bancárias e físico.'})(),
+        (()=>{const r=last.saldo>0?caixaReal/last.saldo:0;return r<0.3?'#ef4444':r<0.5?'#f59e0b':'#22c55e'})())}
+      ${cxInsight('📈 Variação no Mês',
+        filtered.length>=2?arrw(last.saldo-(filtered[0].saldo))+' '+caixaFmtK(last.saldo-filtered[0].saldo):'Sem dados suficientes',
+        filtered.length>=2?(last.saldo>filtered[0].saldo?'Saldo cresceu da primeira para última semana do mês.':'Saldo recuou da primeira para última semana do mês.'):'Registre mais semanas para ver variação.',
+        filtered.length>=2?(last.saldo>=filtered[0].saldo?'#22c55e':'#ef4444'):'#6366f1')}
     </div>
 
-    <!-- Gráficos -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px">
+    <!-- Gráficos 2x2 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">Evolução do Saldo</div>
-        <canvas id="caixa-chart-saldo" style="max-height:200px"></canvas>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Evolução do Saldo — ${caixaMesLabel(mesFiltro+'-01')}</div>
+        <canvas id="caixa-chart-saldo" style="max-height:190px"></canvas>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">Composição do Caixa</div>
-        <canvas id="caixa-chart-comp" style="max-height:200px"></canvas>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Composição do Caixa</div>
+        <canvas id="caixa-chart-comp" style="max-height:190px"></canvas>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">Saldo vs Devedor</div>
-        <canvas id="caixa-chart-devedor" style="max-height:200px"></canvas>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Saldo vs Devedor</div>
+        <canvas id="caixa-chart-devedor" style="max-height:190px"></canvas>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">Projeção de Caixa</div>
-        <canvas id="caixa-chart-proj" style="max-height:200px"></canvas>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Projeção de Caixa</div>
+        <canvas id="caixa-chart-proj" style="max-height:190px"></canvas>
       </div>
     </div>
 
-    <!-- Tabela histórico -->
+    <!-- Comparativo mensal (se houver mais de 1 mês) -->
+    ${mesesDisp.length>1?`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:20px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">Comparativo Mensal — Último Saldo de cada mês</div>
+      <canvas id="caixa-chart-mensal" style="max-height:160px"></canvas>
+    </div>`:''}
+
+    <!-- Tabela semanal -->
     <div class="table-box" style="padding:0;overflow:hidden;margin-bottom:10px">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)">
-        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Histórico Semanal</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border)">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Semanas de ${caixaMesLabel(mesFiltro+'-01')}</div>
         <span style="font-size:11px;color:var(--muted)">${filtered.length} registros</span>
       </div>
       <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;min-width:900px">
+        <table style="width:100%;border-collapse:collapse;min-width:860px">
           <thead><tr style="background:#111;color:#fff">
-            <th style="padding:9px 14px;font-size:10px;text-align:left;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">Data</th>
-            <th style="padding:9px 10px;font-size:10px;text-align:left;text-transform:uppercase;letter-spacing:.08em">Entidade</th>
+            <th style="padding:9px 14px;font-size:10px;text-align:left;text-transform:uppercase;letter-spacing:.08em">Data</th>
             <th style="padding:9px 10px;font-size:10px;text-align:right;text-transform:uppercase;letter-spacing:.08em">Saldo</th>
             <th style="padding:9px 10px;font-size:10px;text-align:right;text-transform:uppercase;letter-spacing:.08em">Caixa Físico</th>
             <th style="padding:9px 10px;font-size:10px;text-align:right;text-transform:uppercase;letter-spacing:.08em">Sicoob</th>
             <th style="padding:9px 10px;font-size:10px;text-align:right;text-transform:uppercase;letter-spacing:.08em">Itaú</th>
             <th style="padding:9px 10px;font-size:10px;text-align:right;text-transform:uppercase;letter-spacing:.08em">Tesouraria</th>
-            <th style="padding:9px 10px;font-size:10px;text-align:right;text-transform:uppercase;letter-spacing:.08em">IFood</th>
-            <th style="padding:9px 10px;font-size:10px;text-align:right;text-transform:uppercase;letter-spacing:.08em">Devedor</th>
+            <th style="padding:9px 10px;font-size:10px;text-align:right;text-transform:uppercase;letter-spacing:.08em;color:#f59e0b">IFood</th>
+            <th style="padding:9px 10px;font-size:10px;text-align:right;text-transform:uppercase;letter-spacing:.08em;color:#ef4444">Devedor</th>
             <th style="padding:9px 10px;font-size:10px;text-align:right;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">Projeção</th>
-            <th style="padding:9px 14px;font-size:10px;text-align:right;text-transform:uppercase;letter-spacing:.08em"></th>
+            <th style="padding:9px 14px"></th>
           </tr></thead>
           <tbody>
-            ${[...filtered].reverse().map((e,i) => {
-              const prev = filtered[filtered.length - 2 - i];
-              const vSaldo = prev ? e.saldo - prev.saldo : null;
+            ${filtered.map((e,i)=>{
+              const pv = i>0?filtered[i-1]:null;
+              const dv = pv?e.saldo-pv.saldo:null;
               return `<tr style="border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-                <td style="padding:10px 14px;font-size:13px;font-weight:600;white-space:nowrap">${caixaFmtDate(e.data)}</td>
-                <td style="padding:10px 10px;font-size:11px;color:var(--muted)">${e.entidade}</td>
+                <td style="padding:10px 14px;font-size:13px;font-weight:700">${caixaFmtDate(e.data)}</td>
                 <td style="padding:10px 10px;font-size:13px;text-align:right;font-weight:700">
                   ${caixaFmtK(e.saldo)}
-                  ${vSaldo!==null?`<br><span style="font-size:10px;font-weight:600;color:${clr(vSaldo)}">${arrow(vSaldo)} ${caixaFmtK(vSaldo)}</span>`:''}
+                  ${dv!==null?`<br><span style="font-size:10px;font-weight:600;color:${clr(dv)}">${arrw(dv)} ${caixaFmtK(dv)}</span>`:''}
                 </td>
                 <td style="padding:10px 10px;font-size:12px;text-align:right;color:var(--muted)">${e.fisico?caixaFmtK(e.fisico):'—'}</td>
                 <td style="padding:10px 10px;font-size:12px;text-align:right;color:var(--muted)">${e.sicoob?caixaFmtK(e.sicoob):'—'}</td>
@@ -6792,211 +6791,187 @@ function caixaRender() {
                 <td style="padding:10px 10px;font-size:12px;text-align:right;color:var(--muted)">${e.tesouraria?caixaFmtK(e.tesouraria):'—'}</td>
                 <td style="padding:10px 10px;font-size:12px;text-align:right;color:#f59e0b;font-weight:600">${e.ifood?caixaFmtK(e.ifood):'—'}</td>
                 <td style="padding:10px 10px;font-size:12px;text-align:right;color:#ef4444;font-weight:600">${e.devedor?caixaFmtK(e.devedor):'—'}</td>
-                <td style="padding:10px 10px;font-size:12px;text-align:right;font-weight:700;color:${clr(e.projecao||0)}">${caixaFmtK(e.projecao)}</td>
-                <td style="padding:10px 14px;text-align:right">
+                <td style="padding:10px 10px;font-size:13px;text-align:right;font-weight:700;color:${clr(e.projecao||0)}">${caixaFmtK(e.projecao)}</td>
+                <td style="padding:10px 14px;text-align:right;white-space:nowrap">
                   <button onclick="caixaAbrirModal('${e._id}')" style="padding:3px 8px;font-size:10px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:inherit">✏️</button>
                   <button onclick="caixaExcluir('${e._id}')" style="padding:3px 8px;font-size:10px;border-radius:5px;border:1px solid #ef444430;background:transparent;color:#ef4444;cursor:pointer;font-family:inherit;margin-left:4px">✕</button>
                 </td>
               </tr>`;
             }).join('')}
+            <!-- Linha de médias -->
+            <tr style="background:var(--surface2);font-weight:700;border-top:2px solid #333">
+              <td style="padding:8px 14px;font-size:11px;color:var(--muted)">Média do mês</td>
+              <td style="padding:8px 10px;font-size:12px;text-align:right">${caixaFmtK(mediaSaldo)}</td>
+              <td style="padding:8px 10px;font-size:12px;text-align:right;color:var(--muted)">${caixaFmtK(media('fisico'))}</td>
+              <td style="padding:8px 10px;font-size:12px;text-align:right;color:var(--muted)">${caixaFmtK(media('sicoob'))}</td>
+              <td style="padding:8px 10px;font-size:12px;text-align:right;color:var(--muted)">${caixaFmtK(media('itau'))}</td>
+              <td style="padding:8px 10px;font-size:12px;text-align:right;color:var(--muted)">${caixaFmtK(media('tesouraria'))}</td>
+              <td style="padding:8px 10px;font-size:12px;text-align:right;color:#f59e0b">${caixaFmtK(mediaIfood)}</td>
+              <td style="padding:8px 10px;font-size:12px;text-align:right;color:#ef4444">${caixaFmtK(mediaDevedor)}</td>
+              <td style="padding:8px 10px;font-size:12px;text-align:right;color:${clr(media('projecao'))}">${caixaFmtK(media('projecao'))}</td>
+              <td></td>
+            </tr>
           </tbody>
         </table>
       </div>
     </div>
-    <div style="font-size:11px;color:var(--muted);margin-top:6px">💡 Dados importados do PDF de Acompanhamento de Saldo de Caixa — Março e Abril/2026. Adicione novos lançamentos semanalmente.</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">💡 Dados de Mar e Abr/2026 importados do PDF. Adicione novos lançamentos semanalmente.</div>
   `;
 
-  // ── Charts ─────────────────────────────────────────────────
+  // ── Charts ──────────────────────────────────────────────────
   requestAnimationFrame(() => {
     if (typeof Chart === 'undefined') return;
-    const labels = filtered.map(e => caixaFmtDate(e.data));
-    const gridColor = 'rgba(255,255,255,.06)';
-    const tickColor = '#888';
-    const baseOpts = {
-      responsive: true, maintainAspectRatio: true,
-      plugins: { legend: { display: true, labels: { color: '#aaa', font: { size: 10 }, boxWidth: 10 } } },
-      scales: {
-        x: { ticks: { color: tickColor, font: { size: 10 } }, grid: { color: gridColor } },
-        y: { ticks: { color: tickColor, font: { size: 10 }, callback: v => 'R$' + (Math.abs(v)/1000).toFixed(0)+'k' }, grid: { color: gridColor } }
+    const labels = filtered.map(e=>caixaFmtDate(e.data));
+    const gc = 'rgba(255,255,255,.06)', tc = '#888';
+    const baseS = {
+      responsive:true, maintainAspectRatio:true,
+      plugins:{legend:{display:true,labels:{color:'#aaa',font:{size:10},boxWidth:10}}},
+      scales:{
+        x:{ticks:{color:tc,font:{size:10}},grid:{color:gc}},
+        y:{ticks:{color:tc,font:{size:10},callback:v=>(Math.abs(v)>=1000?(v<0?'-':'')+'R$'+(Math.abs(v)/1000).toFixed(0)+'k':caixaFmt(v))},grid:{color:gc}}
       }
     };
-
-    // 1. Evolução do Saldo
-    const cs = document.getElementById('caixa-chart-saldo');
-    if (cs) {
-      if (cs._chartInst) cs._chartInst.destroy();
-      cs._chartInst = new Chart(cs, { type:'line', data:{
-        labels,
-        datasets:[{
-          label:'Saldo', data: filtered.map(e=>e.saldo),
-          borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,.15)',
-          fill:true, tension:.35, pointRadius:4, pointBackgroundColor:'#3b82f6'
-        }]
-      }, options: {...baseOpts, plugins:{...baseOpts.plugins, legend:{display:false}}} });
-    }
-
-    // 2. Composição do Caixa (stacked bar)
-    const cc = document.getElementById('caixa-chart-comp');
-    if (cc) {
-      if (cc._chartInst) cc._chartInst.destroy();
-      cc._chartInst = new Chart(cc, { type:'bar', data:{
-        labels,
-        datasets:[
-          {label:'Itaú',       data:filtered.map(e=>e.itau||0),      backgroundColor:'rgba(99,102,241,.85)',  borderRadius:3},
-          {label:'IFood',      data:filtered.map(e=>e.ifood||0),     backgroundColor:'rgba(245,158,11,.85)', borderRadius:3},
-          {label:'Tesouraria', data:filtered.map(e=>e.tesouraria||0),backgroundColor:'rgba(20,184,166,.85)', borderRadius:3},
-          {label:'Sicoob',     data:filtered.map(e=>e.sicoob||0),    backgroundColor:'rgba(168,85,247,.80)', borderRadius:3},
-          {label:'Físico',     data:filtered.map(e=>e.fisico||0),    backgroundColor:'rgba(156,163,175,.80)',borderRadius:3},
-        ]
-      }, options: {...baseOpts, scales:{...baseOpts.scales, x:{...baseOpts.scales.x,stacked:true},y:{...baseOpts.scales.y,stacked:true}}} });
-    }
-
+    const mkChart = (id,cfg) => {
+      const c=document.getElementById(id); if(!c)return;
+      if(c._ci)c._ci.destroy();
+      c._ci=new Chart(c,cfg);
+    };
+    // 1. Saldo
+    mkChart('caixa-chart-saldo',{type:'line',data:{labels,datasets:[{
+      label:'Saldo',data:filtered.map(e=>e.saldo),
+      borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.15)',fill:true,tension:.35,pointRadius:5,pointBackgroundColor:'#3b82f6'
+    }]},options:{...baseS,plugins:{...baseS.plugins,legend:{display:false}}}});
+    // 2. Composição (stacked)
+    mkChart('caixa-chart-comp',{type:'bar',data:{labels,datasets:[
+      {label:'Itaú',      data:filtered.map(e=>e.itau||0),      backgroundColor:'rgba(99,102,241,.85)',borderRadius:3},
+      {label:'IFood',     data:filtered.map(e=>e.ifood||0),     backgroundColor:'rgba(245,158,11,.85)',borderRadius:3},
+      {label:'Tesouraria',data:filtered.map(e=>e.tesouraria||0),backgroundColor:'rgba(20,184,166,.85)',borderRadius:3},
+      {label:'Sicoob',    data:filtered.map(e=>e.sicoob||0),    backgroundColor:'rgba(168,85,247,.80)',borderRadius:3},
+      {label:'Físico',    data:filtered.map(e=>e.fisico||0),    backgroundColor:'rgba(156,163,175,.75)',borderRadius:3},
+    ]},options:{...baseS,scales:{...baseS.scales,x:{...baseS.scales.x,stacked:true},y:{...baseS.scales.y,stacked:true}}}});
     // 3. Saldo vs Devedor
-    const cd = document.getElementById('caixa-chart-devedor');
-    if (cd) {
-      if (cd._chartInst) cd._chartInst.destroy();
-      cd._chartInst = new Chart(cd, { type:'bar', data:{
-        labels,
-        datasets:[
-          {label:'Saldo',   data:filtered.map(e=>e.saldo),   backgroundColor:'rgba(59,130,246,.75)',  borderRadius:4},
-          {label:'Devedor', data:filtered.map(e=>e.devedor||0),backgroundColor:'rgba(239,68,68,.65)', borderRadius:4},
-        ]
-      }, options: baseOpts });
-    }
-
-    // 4. Projeção de Caixa
-    const cp = document.getElementById('caixa-chart-proj');
-    if (cp) {
-      if (cp._chartInst) cp._chartInst.destroy();
-      cp._chartInst = new Chart(cp, { type:'bar', data:{
-        labels,
-        datasets:[{
-          label:'Projeção',
-          data: filtered.map(e=>e.projecao||0),
-          backgroundColor: filtered.map(e=>(e.projecao||0)>=0?'rgba(34,197,94,.80)':'rgba(239,68,68,.75)'),
-          borderRadius: 4
-        }]
-      }, options: {...baseOpts, plugins:{...baseOpts.plugins,legend:{display:false}},
-        scales:{...baseOpts.scales, y:{...baseOpts.scales.y,
-          ticks:{...baseOpts.scales.y.ticks, callback: v => (v<0?'-':'')+'R$'+(Math.abs(v)/1000).toFixed(0)+'k'}}}} });
+    mkChart('caixa-chart-devedor',{type:'bar',data:{labels,datasets:[
+      {label:'Saldo',  data:filtered.map(e=>e.saldo),     backgroundColor:'rgba(59,130,246,.75)',borderRadius:4},
+      {label:'Devedor',data:filtered.map(e=>e.devedor||0),backgroundColor:'rgba(239,68,68,.65)', borderRadius:4},
+    ]},options:baseS});
+    // 4. Projeção
+    mkChart('caixa-chart-proj',{type:'bar',data:{labels,datasets:[{
+      label:'Projeção',data:filtered.map(e=>e.projecao||0),
+      backgroundColor:filtered.map(e=>(e.projecao||0)>=0?'rgba(34,197,94,.80)':'rgba(239,68,68,.75)'),borderRadius:4
+    }]},options:{...baseS,plugins:{...baseS.plugins,legend:{display:false}}}});
+    // 5. Comparativo mensal
+    if (mesesDisp.length>1) {
+      const mLabels = mesesDisp.map(m=>caixaMesLabel(m+'-01'));
+      const mSaldos = mesesDisp.map(m=>{
+        const mes=all.filter(e=>e.data.startsWith(m));
+        return mes.length?mes[mes.length-1].saldo:0;
+      });
+      const mDevs = mesesDisp.map(m=>{
+        const mes=all.filter(e=>e.data.startsWith(m));
+        return mes.length?mes[mes.length-1].devedor:0;
+      });
+      mkChart('caixa-chart-mensal',{type:'bar',data:{labels:mLabels,datasets:[
+        {label:'Saldo (final do mês)', data:mSaldos,backgroundColor:'rgba(59,130,246,.80)',borderRadius:5},
+        {label:'Devedor (final do mês)',data:mDevs,backgroundColor:'rgba(239,68,68,.60)',borderRadius:5},
+      ]},options:baseS});
     }
   });
 }
 
-function kpiCard(label, val, delta, sub, color) {
-  const neg = val < 0;
-  const fmtV = 'R$ ' + Math.abs(val||0).toLocaleString('pt-BR',{minimumFractionDigits:0});
-  const deltaHtml = delta !== null && delta !== undefined ? `
-    <div style="font-size:11px;font-weight:700;color:${delta>=0?'#22c55e':'#ef4444'};margin-top:2px">
-      ${delta>=0?'↑':'↓'} ${Math.abs(delta).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})} vs semana ant.
-    </div>` : '';
+function cxKpi(label,val,delta,sub,color) {
+  const neg=val<0;
+  const s='R$ '+Math.abs(val||0).toLocaleString('pt-BR',{minimumFractionDigits:0});
   return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 14px">
     <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:8px">${label}</div>
-    <div style="font-size:20px;font-weight:900;color:${color};line-height:1.1">${neg?'-':''}${fmtV}</div>
-    ${deltaHtml}
+    <div style="font-size:20px;font-weight:900;color:${color};line-height:1.1">${neg?'-':''}${s}</div>
+    ${delta!==null&&delta!==undefined?`<div style="font-size:11px;font-weight:700;color:${delta>=0?'#22c55e':'#ef4444'};margin-top:2px">${delta>=0?'↑':'↓'} ${Math.abs(delta).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})} vs semana ant.</div>`:''}
     <div style="font-size:11px;color:var(--muted);margin-top:4px;font-weight:500">${sub}</div>
   </div>`;
 }
 
-function insightCard(title, value, text, color) {
-  return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <span style="font-size:12px;font-weight:700;color:var(--text)">${title}</span>
+function cxInsight(title,value,text,color) {
+  return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:12px;font-weight:700">${title}</span>
       <span style="font-size:13px;font-weight:800;color:${color}">${value}</span>
     </div>
-    <div style="width:100%;height:3px;border-radius:2px;background:${color}33;margin:2px 0">
+    <div style="height:3px;border-radius:2px;background:${color}30;margin-bottom:7px">
       <div style="height:3px;border-radius:2px;background:${color};width:100%"></div>
     </div>
-    <div style="font-size:11px;color:var(--muted);line-height:1.4">${text}</div>
+    <div style="font-size:11px;color:var(--muted);line-height:1.5">${text}</div>
   </div>`;
 }
 
 function caixaAbrirModal(id) {
-  const entries = caixaLoad();
-  const entry = id ? entries.find(e => e._id === id) : null;
-  const v = k => entry ? (entry[k] ?? '') : '';
-  const flds = [
-    {k:'data',       l:'Data',              t:'date',   req:true},
-    {k:'entidade',   l:'Entidade',          t:'text',   req:true, ph:'Ex: Matriz, Grupo Singular'},
-    {k:'saldo',      l:'Saldo Total',       t:'number', req:true, ph:'0,00'},
-    {k:'fisico',     l:'Caixa Físico',      t:'number', ph:'0,00'},
-    {k:'sangria',    l:'Caixa Sangria',     t:'number', ph:'0,00'},
-    {k:'sicoob',     l:'Sicoob',            t:'number', ph:'0,00'},
-    {k:'itau',       l:'Itaú',              t:'number', ph:'0,00'},
-    {k:'tesouraria', l:'Caixa Tesouraria',  t:'number', ph:'0,00'},
-    {k:'ifood',      l:'IFood (a receber)', t:'number', ph:'0,00'},
-    {k:'rede',       l:'Rede (a receber)',  t:'number', ph:'0,00'},
-    {k:'aporte',     l:'Aporte',            t:'number', ph:'0,00'},
-    {k:'outros',     l:'Outros',            t:'number', ph:'0,00'},
-    {k:'devedor',    l:'Devedor',           t:'number', ph:'0,00'},
-    {k:'projecao',   l:'Projeção de Caixa', t:'number', ph:'0,00 (negativo = déficit)'},
+  const entries=caixaLoad();
+  const entry=id?entries.find(e=>e._id===id):null;
+  const v=k=>entry?(entry[k]??''):'';
+  const flds=[
+    {k:'data',       l:'Data',              t:'date',  req:true},
+    {k:'saldo',      l:'Saldo Total',       t:'number',req:true,ph:'0,00'},
+    {k:'fisico',     l:'Caixa Físico',      t:'number',ph:'0,00'},
+    {k:'sangria',    l:'Caixa Sangria',     t:'number',ph:'0,00'},
+    {k:'sicoob',     l:'Sicoob',            t:'number',ph:'0,00'},
+    {k:'itau',       l:'Itaú',              t:'number',ph:'0,00'},
+    {k:'tesouraria', l:'Caixa Tesouraria',  t:'number',ph:'0,00'},
+    {k:'ifood',      l:'IFood (a receber)', t:'number',ph:'0,00'},
+    {k:'rede',       l:'Rede (a receber)',  t:'number',ph:'0,00'},
+    {k:'aporte',     l:'Aporte',            t:'number',ph:'0,00'},
+    {k:'outros',     l:'Outros',            t:'number',ph:'0,00'},
+    {k:'devedor',    l:'Devedor',           t:'number',ph:'0,00'},
+    {k:'projecao',   l:'Projeção de Caixa', t:'number',ph:'Negativo = déficit'},
   ];
-  const overlay = document.createElement('div');
-  overlay.id = 'caixa-modal-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-  overlay.innerHTML = `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto">
-      <div style="font-size:16px;font-weight:800;margin-bottom:20px">${entry ? '✏️ Editar Lançamento' : '+ Novo Lançamento de Caixa'}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        ${flds.map(f=>`
-          <div style="${f.k==='entidade'||f.k==='data'?'':''}">
-            <label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">${f.l}${f.req?' *':''}</label>
-            <input id="caixa-f-${f.k}" type="${f.t}" value="${f.t==='number'?v(f.k):v(f.k)}"
-              placeholder="${f.ph||''}"
-              style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit;box-sizing:border-box">
-          </div>`).join('')}
-      </div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:22px">
-        <button onclick="document.getElementById('caixa-modal-overlay').remove()" style="padding:9px 20px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;font-weight:600">Cancelar</button>
-        <button onclick="caixaSalvarModal('${id||''}')" style="padding:9px 20px;border-radius:8px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-family:inherit;font-weight:700">💾 Salvar</button>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
+  const ov=document.createElement('div');
+  ov.id='caixa-modal-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto">
+    <div style="font-size:16px;font-weight:800;margin-bottom:18px">${entry?'✏️ Editar Lançamento':'+ Novo Lançamento'}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px">
+      ${flds.map(f=>`<div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">${f.l}${f.req?' *':''}</label>
+        <input id="cx-f-${f.k}" type="${f.t}" value="${v(f.k)}" placeholder="${f.ph||''}"
+          style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit;box-sizing:border-box">
+      </div>`).join('')}
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+      <button onclick="document.getElementById('caixa-modal-ov').remove()" style="padding:9px 20px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;font-weight:600">Cancelar</button>
+      <button onclick="caixaSalvarModal('${id||''}')" style="padding:9px 20px;border-radius:8px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-family:inherit;font-weight:700">💾 Salvar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
 }
 
 function caixaSalvarModal(id) {
-  const get = k => {
-    const el = document.getElementById('caixa-f-' + k);
-    if (!el) return null;
-    if (el.type === 'number') return parseFloat(el.value) || 0;
-    return el.value.trim();
-  };
-  const data = get('data');
-  const entidade = get('entidade');
-  if (!data || !entidade) { alert('Data e Entidade são obrigatórios.'); return; }
-  const entry = {
-    _id: id || caixaUuid(), data, entidade,
-    saldo: get('saldo'), fisico: get('fisico'), sangria: get('sangria'),
-    sicoob: get('sicoob'), itau: get('itau'), tesouraria: get('tesouraria'),
-    ifood: get('ifood'), rede: get('rede'), aporte: get('aporte'),
-    outros: get('outros'), devedor: get('devedor'), projecao: get('projecao'),
-  };
-  const entries = caixaLoad();
-  if (id) {
-    const idx = entries.findIndex(e => e._id === id);
-    if (idx >= 0) entries[idx] = entry; else entries.push(entry);
-  } else {
-    entries.push(entry);
-  }
+  const get=k=>{const el=document.getElementById('cx-f-'+k);if(!el)return null;return el.type==='number'?parseFloat(el.value)||0:el.value.trim();};
+  const data=get('data');
+  if(!data){alert('Data é obrigatória.');return;}
+  const entry={_id:id||caixaUuid(),data,
+    saldo:get('saldo'),fisico:get('fisico'),sangria:get('sangria'),
+    sicoob:get('sicoob'),itau:get('itau'),tesouraria:get('tesouraria'),
+    ifood:get('ifood'),rede:get('rede'),aporte:get('aporte'),
+    outros:get('outros'),devedor:get('devedor'),projecao:get('projecao')};
+  const entries=caixaLoad();
+  if(id){const i=entries.findIndex(e=>e._id===id);if(i>=0)entries[i]=entry;else entries.push(entry);}
+  else entries.push(entry);
   caixaSave(entries);
-  document.getElementById('caixa-modal-overlay')?.remove();
+  // Atualizar filtro de mês para o mês do novo lançamento
+  window._caixaMesFiltro=data.substring(0,7);
+  document.getElementById('caixa-modal-ov')?.remove();
   caixaRender();
 }
 
 function caixaExcluir(id) {
-  if (!confirm('Excluir este lançamento?')) return;
-  const entries = caixaLoad().filter(e => e._id !== id);
+  if(!confirm('Excluir este lançamento?'))return;
+  const entries=caixaLoad().filter(e=>e._id!==id);
   caixaSave(entries);
   caixaRender();
 }
 
 // Hook: renderizar ao abrir a seção
-const _origShowSubSection = window.showSubSection;
-window.showSubSection = function(cat, sub) {
-  _origShowSubSection && _origShowSubSection(cat, sub);
-  if (cat === 'financeiro' && sub === 'caixa') {
-    setTimeout(caixaRender, 80);
-  }
+const _origShowSubSection=window.showSubSection;
+window.showSubSection=function(cat,sub){
+  _origShowSubSection&&_origShowSubSection(cat,sub);
+  if(cat==='financeiro'&&sub==='caixa'){setTimeout(caixaRender,80);}
 };
 </script>
 </body>
