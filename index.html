@@ -6965,7 +6965,7 @@ function caixaRenderSemanal(el,all,mesesDisp){
   const hasCaixaIF=all.some(e=>e.caixaInicial||e.caixaFinal);
 
   // --- Filtros persistentes ---
-  if(window._caixaSemMesFiltro===undefined)window._caixaSemMesFiltro='';
+  if(window._caixaSemMesFiltro===undefined||!mesesDisp.includes(window._caixaSemMesFiltro))window._caixaSemMesFiltro=mesesDisp[mesesDisp.length-1]||'';
   if(window._caixaSemSemFiltro===undefined)window._caixaSemSemFiltro='';
   const mf=window._caixaSemMesFiltro;
   const sf=window._caixaSemSemFiltro;
@@ -6987,8 +6987,6 @@ function caixaRenderSemanal(el,all,mesesDisp){
     <!-- Filtro Mês -->
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
       <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;flex-shrink:0;margin-right:2px">Mês:</span>
-      <button onclick="window._caixaSemMesFiltro='';window._caixaSemSemFiltro='';${RR}"
-        style="padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid ${!mf?'var(--accent)':'var(--border)'};background:${!mf?'var(--accent)':'transparent'};color:${!mf?'#fff':'var(--muted)'}">Todos</button>
       ${mesesDisp.map(m=>`<button onclick="window._caixaSemMesFiltro='${m}';window._caixaSemSemFiltro='';${RR}"
         style="padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid ${mf===m?'var(--accent)':'var(--border)'};background:${mf===m?'var(--accent)':'transparent'};color:${mf===m?'#fff':'var(--muted)'}">
         ${caixaMesLabel(m+'-01')}</button>`).join('')}
@@ -6997,9 +6995,7 @@ function caixaRenderSemanal(el,all,mesesDisp){
     <!-- Filtro Semana -->
     <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:18px;align-items:center">
       <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;flex-shrink:0;margin-right:2px">Semana:</span>
-      <button onclick="window._caixaSemSemFiltro='';${RR}"
-        style="padding:4px 11px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid ${!sfC?'var(--accent)':'var(--border)'};background:${!sfC?'var(--accent)':'transparent'};color:${!sfC?'#fff':'var(--muted)'}">Todas</button>
-      ${filtered.map(e=>`<button onclick="window._caixaSemSemFiltro='${e.data}';${RR}"
+      ${filtered.map(e=>`<button onclick="window._caixaSemSemFiltro=window._caixaSemSemFiltro==='${e.data}'?'':'${e.data}';${RR}"
         style="padding:4px 11px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid ${sfC===e.data?'var(--accent)':'var(--border)'};background:${sfC===e.data?'var(--accent)':'transparent'};color:${sfC===e.data?'#fff':'var(--muted)'}">
         ${caixaFmtDate(e.data)}</button>`).join('')}
     </div>
