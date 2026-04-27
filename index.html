@@ -2837,6 +2837,13 @@ function buildResumHTML(ativos, cancelados, todos) {
       <div class="chart-box"><h3>Faturamento diário</h3><canvas id="cDiario"></canvas></div>
       <div class="chart-box"><h3>Pedidos por canal</h3><canvas id="cCanaisPie"></canvas></div>
     </div>
+    <div class="chart-box" style="margin-bottom:20px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+        <h3 style="margin:0">Pedidos por dia</h3>
+        <span id="resumo-avg-pedidos" style="font-size:12px;color:var(--muted)"></span>
+      </div>
+      <canvas id="cPedidosDia"></canvas>
+    </div>
     <div class="grid2">
       <div class="chart-box"><h3>Por loja</h3><canvas id="cLoja"></canvas></div>
       <div class="chart-box"><h3>Horário de pico</h3><canvas id="cHorario"></canvas></div>
@@ -2895,6 +2902,51 @@ function initTransactionCharts(ativos) {
         scales: {
           x: { grid:{ color:'rgba(0,0,0,.07)' }, ticks:{ color:'#555555', font:{ size:11 }, maxRotation:30, minRotation:0 } },
           y: { grid:{ color:'rgba(0,0,0,.07)' }, ticks:{ color:'#555555', font:{ size:11 }, callback: v => R(v) } }
+        }
+      }
+    });
+  }
+
+  // Pedidos por dia
+  const pedsPorDia = {};
+  ativos.forEach(r => {
+    if(!r._date) return;
+    const k = r._date.toLocaleDateString('pt-BR');
+    pedsPorDia[k] = (pedsPorDia[k]||0) + 1;
+  });
+  const pedsDiasOrd = Object.entries(pedsPorDia).sort((a,b)=>new Date(a[0].split('/').reverse().join('-'))-new Date(b[0].split('/').reverse().join('-')));
+  const pedsDayLabels = pedsDiasOrd.map(([k])=>k.slice(0,5));
+  const pedsDayVals   = pedsDiasOrd.map(([,v])=>v);
+  const avgPedsDia    = pedsDayVals.length ? pedsDayVals.reduce((a,b)=>a+b,0)/pedsDayVals.length : 0;
+  const elAvg = document.getElementById('resumo-avg-pedidos');
+  if(elAvg) elAvg.textContent = `Média: ${avgPedsDia.toFixed(1)} pedidos/dia · ${pedsDiasOrd.length} dias`;
+  destroyChart('cPedidosDia');
+  const elPeds = document.getElementById('cPedidosDia');
+  if(elPeds && pedsDayVals.length) {
+    charts['cPedidosDia'] = new Chart(elPeds, {
+      type:'bar',
+      data:{
+        labels: pedsDayLabels,
+        datasets:[
+          { label:'Pedidos', data:pedsDayVals,
+            backgroundColor: pedsDayVals.map(v=>v>=avgPedsDia?'rgba(99,102,241,.75)':'rgba(148,163,184,.55)'),
+            borderColor:     pedsDayVals.map(v=>v>=avgPedsDia?'rgba(99,102,241,1)':'rgba(148,163,184,.8)'),
+            borderWidth:1.5, borderRadius:4, order:2 },
+          { label:'Média', data: pedsDayVals.map(()=>avgPedsDia),
+            type:'line', borderColor:'#f59e0b', borderWidth:2, borderDash:[5,3],
+            pointRadius:0, fill:false, order:1 }
+        ]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:true,
+        plugins:{
+          legend:{ display:true, labels:{ color:'#555', font:{size:11}, boxWidth:16 } },
+          tooltip:{ backgroundColor:'#111', borderColor:'#333', borderWidth:1, titleColor:'#fff', bodyColor:'#aaa', padding:10,
+            callbacks:{ label: ctx => ctx.datasetIndex===0 ? ` ${ctx.raw} pedidos` : ` Média: ${ctx.raw.toFixed(1)}` } }
+        },
+        scales:{
+          x:{ grid:{color:'rgba(0,0,0,.06)'}, ticks:{color:'#777', font:{size:11}, maxRotation:45, minRotation:0} },
+          y:{ grid:{color:'rgba(0,0,0,.06)'}, ticks:{color:'#777', font:{size:11}, stepSize:1}, beginAtZero:true }
         }
       }
     });
