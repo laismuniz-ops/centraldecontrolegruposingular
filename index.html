@@ -3482,7 +3482,7 @@ function dreParseXlsx(file, callback, onError) {
         else if (c.includes('02.3') || c.includes('dedu') || c.includes('desconto'))                  matchedField = 'deducoesVendas';
         else if (c.includes('03.1') || c.includes('custo da mercadoria') || c.includes('custo de mercadoria')) matchedField = 'cmv';
         else if (c.includes('03.2') || c.includes('custo das vendas de'))                             matchedField = 'custoVendas';
-        else if (c.includes('04.1') || c.includes('despesas comerciais') || c.includes('marketing'))  matchedField = 'despComerciais';
+        else if (c.includes('04.1') || c.includes('despesas comerciais'))                             matchedField = 'despComerciais';
         else if (c.includes('04.2') || c.includes('outras despesas var'))                             matchedField = 'outrasDespVar';
         else if (c.includes('05.1') || c.includes('despesas administrat'))                            matchedField = 'despAdmin';
         else if (c.includes('05.2') || (c.includes('cmo') && !c.includes('custo')))                   matchedField = 'despPessoal';
