@@ -3053,19 +3053,25 @@ function renderPedidosTable(todos, search, canal, cancelMode) {
   const exibindo = filtered.slice(0, 1000);
 
   const cancelReasons = _cancelReasonsLoad();
-  const thead = `<thead><tr><th>#</th><th>Data</th><th>Loja</th><th>Canal</th><th>Consumidor</th><th>Entregador</th><th>Bairro</th><th>Itens</th><th>Entrega</th><th>Desconto</th><th>Total</th><th>Status</th>${cancelMode!=='none'?'<th>Motivo</th>':''}</tr></thead>`;
+  const cancelMarked = cancelMode === 'only' ? _cancelMarkedLoad() : new Set();
+  const thead = `<thead><tr>${cancelMode==='only'?'<th style="width:28px"></th>':''}<th>#</th><th>Data</th><th>Loja</th><th>Canal</th><th>Consumidor</th><th>Entregador</th><th>Bairro</th><th>Itens</th><th>Entrega</th><th>Desconto</th><th>Total</th><th>Status</th>${cancelMode!=='none'?'<th>Motivo</th>':''}</tr></thead>`;
   const rows = exibindo.map(r => {
     const cancelado = str(r['Está cancelado']).toUpperCase() === 'S';
     const data = str(r['Data da venda']).split(' ')[0];
     const pedidoId = String(r['Pedido']||'');
+    const marked = cancelMode === 'only' && pedidoId && cancelMarked.has(pedidoId);
     const motivo = cancelado && pedidoId ? (cancelReasons[pedidoId] || '') : '';
     const motivoCell = cancelado && pedidoId
       ? `<td style="white-space:nowrap">
           ${motivo ? `<span style="font-size:11px;color:var(--muted);max-width:120px;display:inline-block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle" title="${motivo.replace(/"/g,'&quot;')}">${motivo}</span> ` : ''}
-          <button onclick="cancelSetMotivo('${pedidoId.replace(/'/g,"\\'")}')" style="padding:2px 6px;font-size:10px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;" title="Adicionar/editar motivo">📝</button>
+          <button onclick="event.stopPropagation();cancelSetMotivo('${pedidoId.replace(/'/g,"\\'")}')" style="padding:2px 6px;font-size:10px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;" title="Adicionar/editar motivo">📝</button>
         </td>`
       : (cancelMode!=='none' ? '<td></td>' : '');
-    return `<tr style="${cancelado&&cancelMode!=='only'?'opacity:.45':''}">
+    const markCell = cancelMode === 'only'
+      ? `<td style="text-align:center;padding:6px 4px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${marked?'#ef4444':'transparent'};border:1.5px solid ${marked?'#ef4444':'var(--border)'};transition:all .15s"></span></td>`
+      : '';
+    return `<tr style="${marked?'background:rgba(239,68,68,.13);border-left:3px solid #ef4444;':cancelado&&cancelMode!=='only'?'opacity:.45':''}"${cancelMode==='only'&&pedidoId?` onclick="toggleCancelMark('${pedidoId.replace(/'/g,"\\'")}')" title="Clique para marcar/desmarcar" style="cursor:pointer;${marked?'background:rgba(239,68,68,.13);border-left:3px solid #ef4444;':''}"`:''}>
+      ${markCell}
       <td style="color:var(--muted)">${r['Pedido']||'—'}</td>
       <td style="white-space:nowrap">${data}</td>
       <td>${str(r['Nome da loja']).replace('Singular Sushi','Sing.').replace('Brisa Sushi & Poke','Brisa')}</td>
@@ -3115,7 +3121,8 @@ function renderPedidosTable(todos, search, canal, cancelMode) {
       </button>
     </div>
     <div class="table-box">
-      <h3>${statusLine}${filtered.length>1000?' · exibindo 1000':''}</h3>
+      <h3>${statusLine}${filtered.length>1000?' · exibindo 1000':''}${cancelMode==='only'&&cancelMarked.size>0?` · <span style="color:#ef4444;font-weight:700">${cancelMarked.size} marcado${cancelMarked.size!==1?'s':''} ●</span>`:''}</h3>
+      ${cancelMode==='only'?`<p style="font-size:11px;color:var(--muted);margin:-8px 0 10px">Clique em uma linha para pintá-la de vermelho. Clique novamente para desmarcar.</p>`:''}
       <table>${thead}<tbody id="tPedidos">${rows}</tbody></table>
     </div>`;
 }
@@ -3131,6 +3138,22 @@ function filterPedidos() {
 function toggleCancelados() {
   // Cycle: none → all → only → none
   _pedidosShowCancelled = _pedidosShowCancelled === 'none' ? 'all' : _pedidosShowCancelled === 'all' ? 'only' : 'none';
+  filterPedidos();
+}
+
+// ── Marcação manual de cancelados (pintar de vermelho) ───────────
+const CANCEL_MARKED_KEY = 'sing_cancel_marked_v1';
+function _cancelMarkedLoad() {
+  try { return new Set(JSON.parse(localStorage.getItem(CANCEL_MARKED_KEY) || '[]')); }
+  catch(e) { return new Set(); }
+}
+function _cancelMarkedSave(s) {
+  localStorage.setItem(CANCEL_MARKED_KEY, JSON.stringify([...s]));
+}
+function toggleCancelMark(pedidoId) {
+  const s = _cancelMarkedLoad();
+  if (s.has(pedidoId)) s.delete(pedidoId); else s.add(pedidoId);
+  _cancelMarkedSave(s);
   filterPedidos();
 }
 
