@@ -6896,10 +6896,13 @@ function caixaRenderMensal(el,all,mesesDisp){
   const prev=filtered[filtered.length-2]||null;
   const varSaldo=prev?last.saldo-prev.saldo:null;
   const varMes=filtered.length>=2?last.saldo-first.saldo:null;
-  const cxReal=(last.fisico||0)+(last.sangria||0)+(last.sicoob||0)+(last.itau||0)+(last.tesouraria||0);
   const hasCaixaIF=filtered.some(e=>e.caixaInicial||e.caixaFinal);
   const media=k=>filtered.length?filtered.reduce((s,e)=>s+(e[k]||0),0)/filtered.length:0;
   const soma=k=>filtered.reduce((s,e)=>s+(e[k]||0),0);
+  // Caixa real: soma e média do mês (Físico + Sangria + Sicoob + Itaú + Tesouraria)
+  const cxRealPorSemana=filtered.map(e=>(e.fisico||0)+(e.sangria||0)+(e.sicoob||0)+(e.itau||0)+(e.tesouraria||0));
+  const cxReal=cxRealPorSemana.reduce((s,v)=>s+v,0);
+  const cxRealMedia=filtered.length?cxReal/filtered.length:0;
   // Totais do mês (soma de todas as semanas)
   const mesIfood   = soma('ifood');
   const mesDevedor = soma('devedor');
@@ -6920,7 +6923,7 @@ function caixaRenderMensal(el,all,mesesDisp){
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:18px">
       ${cxKpi('Saldo Inicial',first.saldo,null,'Primeira semana do mês','#94a3b8')}
       ${cxKpi('Saldo Final',last.saldo,varMes,'vs. início do mês','#3b82f6')}
-      ${cxKpi('Caixa Real',cxReal,null,'Físico + Banco + Tesouraria','#6366f1')}
+      ${cxKpi('Caixa Real',cxReal,null,'Média/semana: '+caixaFmtK(cxRealMedia),'#6366f1')}
       ${hasCaixaIF&&last.caixaFinal?cxKpi('Caixa Final',last.caixaFinal,last.caixaInicial?(last.caixaFinal-last.caixaInicial):null,'Fechamento da última semana','#14b8a6'):''}
       ${cxKpi('IFood a Receber',mesIfood,null,ifoodPct.toFixed(1)+'% do saldo total do mês','#f59e0b')}
       ${cxKpi('Devedor',mesDevedor,null,devRatio.toFixed(0)+'% do saldo total do mês','#ef4444')}
