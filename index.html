@@ -6897,10 +6897,16 @@ function caixaRenderMensal(el,all,mesesDisp){
   const varSaldo=prev?last.saldo-prev.saldo:null;
   const varMes=filtered.length>=2?last.saldo-first.saldo:null;
   const cxReal=(last.fisico||0)+(last.sangria||0)+(last.sicoob||0)+(last.itau||0)+(last.tesouraria||0);
-  const ifoodPct=last.saldo>0?last.ifood/last.saldo*100:0;
-  const devRatio=last.saldo>0?(last.devedor||0)/last.saldo*100:0;
   const hasCaixaIF=filtered.some(e=>e.caixaInicial||e.caixaFinal);
   const media=k=>filtered.length?filtered.reduce((s,e)=>s+(e[k]||0),0)/filtered.length:0;
+  const soma=k=>filtered.reduce((s,e)=>s+(e[k]||0),0);
+  // Totais do mês (soma de todas as semanas)
+  const mesIfood   = soma('ifood');
+  const mesDevedor = soma('devedor');
+  const mesProjecao= soma('projecao');
+  const mesSaldo   = soma('saldo');
+  const ifoodPct   = mesSaldo>0?mesIfood/mesSaldo*100:0;
+  const devRatio   = mesSaldo>0?mesDevedor/mesSaldo*100:0;
 
   el.innerHTML=`
     <!-- Filtro mês -->
@@ -6916,19 +6922,19 @@ function caixaRenderMensal(el,all,mesesDisp){
       ${cxKpi('Saldo Final',last.saldo,varMes,'vs. início do mês','#3b82f6')}
       ${cxKpi('Caixa Real',cxReal,null,'Físico + Banco + Tesouraria','#6366f1')}
       ${hasCaixaIF&&last.caixaFinal?cxKpi('Caixa Final',last.caixaFinal,last.caixaInicial?(last.caixaFinal-last.caixaInicial):null,'Fechamento da última semana','#14b8a6'):''}
-      ${cxKpi('IFood a Receber',last.ifood,null,ifoodPct.toFixed(1)+'% do saldo','#f59e0b')}
-      ${cxKpi('Devedor',last.devedor||0,null,devRatio.toFixed(0)+'% do saldo','#ef4444')}
-      ${cxKpi('Projeção',last.projecao||0,null,(last.projecao||0)>=0?'✅ Positiva':'⚠️ Negativa',(last.projecao||0)>=0?'#22c55e':'#ef4444')}
+      ${cxKpi('IFood a Receber',mesIfood,null,ifoodPct.toFixed(1)+'% do saldo total do mês','#f59e0b')}
+      ${cxKpi('Devedor',mesDevedor,null,devRatio.toFixed(0)+'% do saldo total do mês','#ef4444')}
+      ${cxKpi('Projeção',mesProjecao,null,mesProjecao>=0?'✅ Positiva no mês':'⚠️ Negativa no mês',mesProjecao>=0?'#22c55e':'#ef4444')}
       ${cxKpi('Média Mensal do Saldo',media('saldo'),null,filtered.length+' semanas · '+caixaMesLabel(mf+'-01'),'#14b8a6')}
     </div>
 
     <!-- Insights -->
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-bottom:18px">
-      ${cxInsight('📱 IFood / Saldo',ifoodPct.toFixed(1)+'%',
+      ${cxInsight('📱 IFood / Saldo (mês)',ifoodPct.toFixed(1)+'%',
         ifoodPct>60?'Alta dependência de recebíveis IFood. Risco de liquidez imediata.':
         ifoodPct>40?'Atenção ao prazo de repasse do IFood.':'Boa diversificação.',
         ifoodPct>60?'#ef4444':ifoodPct>40?'#f59e0b':'#22c55e')}
-      ${cxInsight('📊 Devedor / Saldo',devRatio.toFixed(0)+'%',
+      ${cxInsight('📊 Devedor / Saldo (mês)',devRatio.toFixed(0)+'%',
         devRatio>100?'Devedor supera o saldo! Risco crítico de caixa.':
         devRatio>80?'Devedor alto. Monitorar recebimentos.':'Nível controlado.',
         devRatio>100?'#ef4444':devRatio>80?'#f59e0b':'#22c55e')}
