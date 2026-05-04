@@ -2164,6 +2164,15 @@ function renderTransactionsDashboard(wb) {
   _canceladosAll = cancelados;
   salvarDadosTxn(rows, document.getElementById('fileName')?.textContent || '');
 
+  // Salvar no arquivo mensal
+  const _mesKey = vendasDetectarMesKey(ativos);
+  if(_mesKey) {
+    const _fileName = document.getElementById('fileName')?.textContent || '';
+    vendasMesSalvar(_mesKey, rows, _fileName);
+    window._vendasMesAtivo = _mesKey;
+    setTimeout(vendasRenderSeletor, 50);
+  }
+
   // Mostrar barra de filtro e botões de PDF
   document.getElementById('periodFilterBar').style.display = 'flex';
   document.getElementById('btnExportAba').classList.add('visible');
@@ -4660,10 +4669,133 @@ function salvarDadosTxn(allRows, sourceLabel) {
   } catch(e) { console.warn('[cache] save failed:', e.message); }
 }
 
+// ── Arquivo mensal de vendas ──────────────────────────────────────
+const VENDAS_ARQ_KEY = 'sing_vendas_arquivo_v1';
+const VENDAS_MES_PFX = 'sing_vendas_mes_';
+
+function vendasArqLoad() {
+  try { return JSON.parse(localStorage.getItem(VENDAS_ARQ_KEY)||'[]'); } catch(e) { return []; }
+}
+function vendasArqSave(arr) {
+  localStorage.setItem(VENDAS_ARQ_KEY, JSON.stringify(arr));
+}
+function vendasMesLabel(mesKey) {
+  const [ano, mes] = mesKey.split('-');
+  const nomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  return (nomes[parseInt(mes)-1]||mes)+'/'+ano;
+}
+function vendasDetectarMesKey(rows) {
+  const counts = {};
+  rows.forEach(r => {
+    if(r._date instanceof Date) {
+      const k = r._date.toISOString().substring(0,7);
+      counts[k] = (counts[k]||0)+1;
+    } else {
+      const ds = str(r['Data da venda']||'');
+      const m = ds.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+      if(m) { const k=`${m[3]}-${m[2]}`; counts[k]=(counts[k]||0)+1; }
+    }
+  });
+  const entries = Object.entries(counts);
+  if(!entries.length) return null;
+  return entries.sort((a,b)=>b[1]-a[1])[0][0];
+}
+function vendasMesSalvar(mesKey, rows, fileName) {
+  const ser = rows.map(r => {
+    const o={};
+    for(const [k,v] of Object.entries(r)){
+      if(k==='_raw') continue;
+      o[k] = (k==='_date'&&v instanceof Date)?v.toISOString():v;
+    }
+    return o;
+  });
+  try { localStorage.setItem(VENDAS_MES_PFX+mesKey, JSON.stringify(ser)); } catch(e){ console.warn('Arquivo mensal: armazenamento cheio',e); }
+  const arq = vendasArqLoad();
+  const idx = arq.findIndex(a=>a.mesKey===mesKey);
+  const meta = {mesKey, label:vendasMesLabel(mesKey), fileName:fileName||'', ts:Date.now(), count:rows.length};
+  if(idx>=0) arq[idx]=meta; else arq.push(meta);
+  arq.sort((a,b)=>a.mesKey.localeCompare(b.mesKey));
+  vendasArqSave(arq);
+}
+function vendasMesCarregar(mesKey) {
+  try {
+    const raw = localStorage.getItem(VENDAS_MES_PFX+mesKey);
+    if(!raw) return null;
+    const rows = JSON.parse(raw);
+    rows.forEach(r => { if(r._date && typeof r._date==='string') r._date=new Date(r._date); });
+    return rows;
+  } catch(e) { return null; }
+}
+function vendasMesExcluir(mesKey) {
+  if(!confirm('Remover '+vendasMesLabel(mesKey)+'?')) return;
+  localStorage.removeItem(VENDAS_MES_PFX+mesKey);
+  const arq = vendasArqLoad().filter(a=>a.mesKey!==mesKey);
+  vendasArqSave(arq);
+  const resto = vendasArqLoad();
+  if(window._vendasMesAtivo===mesKey) {
+    window._vendasMesAtivo = '';
+    if(resto.length) vendasAtivarMes(resto[resto.length-1].mesKey);
+    else { document.getElementById('uploadSection').style.display=''; document.getElementById('dashboard').classList.remove('visible'); vendasRenderSeletor(); }
+  } else { vendasRenderSeletor(); }
+}
+function vendasRenderSeletor() {
+  let sel = document.getElementById('vendas-mes-seletor');
+  if(!sel) {
+    sel = document.createElement('div');
+    sel.id = 'vendas-mes-seletor';
+    const titleBar = document.getElementById('vendas-title-bar');
+    if(titleBar) titleBar.after(sel);
+    else {
+      const dash = document.getElementById('dashboard');
+      if(dash) dash.parentNode.insertBefore(sel, dash);
+    }
+  }
+  const arq = vendasArqLoad();
+  const ativo = window._vendasMesAtivo||'';
+  if(!arq.length) { sel.innerHTML=''; return; }
+  sel.innerHTML = `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:0 28px 14px">
+    <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;flex-shrink:0">Mês:</span>
+    ${arq.map(a=>`<div style="display:flex;align-items:center;gap:2px">
+      <button onclick="vendasAtivarMes('${a.mesKey}')"
+        style="padding:5px 13px;border-radius:99px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid ${ativo===a.mesKey?'var(--accent)':'var(--border)'};background:${ativo===a.mesKey?'var(--accent)':'transparent'};color:${ativo===a.mesKey?'#fff':'var(--muted)'}">
+        ${a.label}</button>
+      <button onclick="vendasMesExcluir('${a.mesKey}')" title="Remover"
+        style="padding:1px 5px;font-size:10px;border-radius:4px;border:1px solid #ef444430;background:transparent;color:#ef4444;cursor:pointer;font-family:inherit">✕</button>
+    </div>`).join('')}
+    <label style="padding:5px 12px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;border:1px dashed var(--border);background:transparent;color:var(--muted);display:inline-flex;align-items:center;gap:4px">
+      + Adicionar mês
+      <input type="file" accept=".xlsx,.xls" style="display:none" onchange="handleFile(this.files[0])">
+    </label>
+  </div>`;
+}
+function vendasAtivarMes(mesKey) {
+  window._vendasMesAtivo = mesKey;
+  const rows = vendasMesCarregar(mesKey);
+  if(!rows) { alert('Dados não encontrados para este mês.'); return; }
+  const ativos    = rows.filter(r => str(r['Está cancelado']).toUpperCase() !== 'S');
+  const cancelados = rows.filter(r => str(r['Está cancelado']).toUpperCase() === 'S');
+  _allRows = rows; _ativosAll = ativos; _canceladosAll = cancelados;
+  document.getElementById('uploadSection').style.display = 'none';
+  document.getElementById('dashboard').classList.add('visible');
+  document.getElementById('fileName').textContent = vendasMesLabel(mesKey);
+  document.getElementById('headerInfo').textContent = ativos.length+' pedidos';
+  buildTransactionUI(rows, ativos, cancelados);
+  vendasRenderSeletor();
+}
+
 function carregarDadosTxn() {
   try {
-    const raw = localStorage.getItem(TXN_CACHE_KEY);
-    if (!raw) return false;
+    // Se não há cache principal mas há arquivo mensal, carregar o mais recente
+    const _rawCheck = localStorage.getItem(TXN_CACHE_KEY);
+    if(!_rawCheck) {
+      const _arqCheck = vendasArqLoad();
+      if(_arqCheck.length) {
+        vendasAtivarMes(_arqCheck[_arqCheck.length-1].mesKey);
+        return true;
+      }
+      return false;
+    }
+    const raw = _rawCheck;
     const { label, rows } = JSON.parse(raw);
     if (!rows || !rows.length) return false;
 
@@ -4694,6 +4826,18 @@ function carregarDadosTxn() {
     document.getElementById('filterCount').textContent = '';
 
     buildTransactionUI(rows, ativos, cancelados);
+
+    // Restaurar seletor de meses
+    const _arqExistente = vendasArqLoad();
+    if(_arqExistente.length) {
+      if(!window._vendasMesAtivo) {
+        // Adivinhar qual mês está no cache
+        const _mk = vendasDetectarMesKey(rows);
+        window._vendasMesAtivo = _mk || (_arqExistente[_arqExistente.length-1].mesKey);
+      }
+      setTimeout(vendasRenderSeletor, 80);
+    }
+
     return true;
   } catch(e) { console.warn('[cache] load failed:', e.message); return false; }
 }
