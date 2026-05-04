@@ -5387,66 +5387,166 @@ function buildResumoAnualHTML() {
     const cancelados = rows.filter(r => str(r['Está cancelado']).toUpperCase() === 'S');
     const fat = ativos.reduce((s,r)=>s+(parseNum(r['Total'])||0),0);
     const ticket = ativos.length ? fat/ativos.length : 0;
+
+    // Por canal (geral)
     const porCanal = {};
     ativos.forEach(r=>{ const c=str(r['Canal de venda'])||'Outros'; porCanal[c]=(porCanal[c]||0)+(parseNum(r['Total'])||0); });
-    return { mesKey:a.mesKey, label:a.label, fat, pedidos:ativos.length, cancelados:cancelados.length, ticket, porCanal };
+
+    // Por loja
+    const singAtivos  = ativos.filter(r=>normalizeLoja(r['Nome da loja'])==='SINGULAR SUSHI');
+    const brisaAtivos = ativos.filter(r=>normalizeLoja(r['Nome da loja'])==='BRISA SUSHI');
+    const singFat  = singAtivos.reduce((s,r)=>s+(parseNum(r['Total'])||0),0);
+    const brisaFat = brisaAtivos.reduce((s,r)=>s+(parseNum(r['Total'])||0),0);
+
+    // Por canal por loja
+    const singCanal = {}, brisaCanal = {};
+    singAtivos.forEach(r=>{ const c=str(r['Canal de venda'])||'Outros'; singCanal[c]=(singCanal[c]||0)+(parseNum(r['Total'])||0); });
+    brisaAtivos.forEach(r=>{ const c=str(r['Canal de venda'])||'Outros'; brisaCanal[c]=(brisaCanal[c]||0)+(parseNum(r['Total'])||0); });
+
+    return { mesKey:a.mesKey, label:a.label, fat, pedidos:ativos.length, cancelados:cancelados.length, ticket, porCanal,
+      sing:  { fat:singFat,  pedidos:singAtivos.length,  cancelados:ativos.length-singAtivos.length,  porCanal:singCanal },
+      brisa: { fat:brisaFat, pedidos:brisaAtivos.length, cancelados:ativos.length-brisaAtivos.length, porCanal:brisaCanal }
+    };
   }).filter(Boolean).sort((a,b)=>a.mesKey.localeCompare(b.mesKey));
 
   if(!mesesData.length) return `<div style="padding:40px;text-align:center;color:var(--muted)">Sem dados carregados.</div>`;
 
-  const totalFat = mesesData.reduce((s,m)=>s+m.fat,0);
-  const totalPed = mesesData.reduce((s,m)=>s+m.pedidos,0);
-  const totalCanc= mesesData.reduce((s,m)=>s+m.cancelados,0);
+  const totalFat  = mesesData.reduce((s,m)=>s+m.fat,0);
+  const totalPed  = mesesData.reduce((s,m)=>s+m.pedidos,0);
+  const totalCanc = mesesData.reduce((s,m)=>s+m.cancelados,0);
   const ticketGeral = totalPed ? totalFat/totalPed : 0;
   const melhor = mesesData.reduce((b,m)=>m.fat>b.fat?m:b, mesesData[0]);
   const pior   = mesesData.reduce((b,m)=>m.fat<b.fat?m:b, mesesData[0]);
 
-  // Todos os canais presentes
-  const todosCanais = [...new Set(mesesData.flatMap(m=>Object.keys(m.porCanal)))];
+  // Totais por loja
+  const singTotalFat  = mesesData.reduce((s,m)=>s+m.sing.fat,0);
+  const brisaTotalFat = mesesData.reduce((s,m)=>s+m.brisa.fat,0);
+  const singTotalPed  = mesesData.reduce((s,m)=>s+m.sing.pedidos,0);
+  const brisaTotalPed = mesesData.reduce((s,m)=>s+m.brisa.pedidos,0);
+  const singTicket    = singTotalPed  ? singTotalFat/singTotalPed   : 0;
+  const brisaTicket   = brisaTotalPed ? brisaTotalFat/brisaTotalPed : 0;
+  const singPct       = totalFat ? singTotalFat/totalFat*100  : 0;
+  const brisaPct      = totalFat ? brisaTotalFat/totalFat*100 : 0;
 
-  const chartId = 'cResumoAnualFat_'+Date.now();
-  const chartIdPed = 'cResumoAnualPed_'+Date.now();
+  // Canais consolidados
+  const canalTotal = {};
+  mesesData.forEach(m=>{ Object.entries(m.porCanal).forEach(([c,v])=>{ canalTotal[c]=(canalTotal[c]||0)+v; }); });
+  const todosCanais = Object.keys(canalTotal).sort((a,b)=>canalTotal[b]-canalTotal[a]);
+
+  // IDs únicos para charts
+  const ts = Date.now();
+  const cFat   = 'cRAFat_'+ts;
+  const cPed   = 'cRAPed_'+ts;
+  const cCanal = 'cRACanal_'+ts;
+  const cLoja  = 'cRALoja_'+ts;
 
   setTimeout(()=>{
     if(typeof Chart==='undefined') return;
-    const labels = mesesData.map(m=>m.label.replace('/2026',''));
-    const vals = mesesData.map(m=>m.fat);
+    const labels = mesesData.map(m=>m.label.replace('/2026','').replace('/2025',''));
+    const vals   = mesesData.map(m=>m.fat);
     const avgFat = vals.reduce((a,b)=>a+b,0)/(vals.length||1);
+
     const bo = { responsive:true, maintainAspectRatio:true,
       plugins:{ legend:{display:false}, tooltip:{backgroundColor:'#111',borderColor:'#333',borderWidth:1,titleColor:'#fff',bodyColor:'#aaa',padding:10,callbacks:{label:ctx=>` ${R(ctx.raw)}`}} },
       scales:{ x:{grid:{color:'rgba(0,0,0,.06)'},ticks:{color:'#777',font:{size:11}}}, y:{grid:{color:'rgba(0,0,0,.06)'},ticks:{color:'#777',font:{size:11},callback:v=>R(v)}} }
     };
-    destroyChart(chartId);
-    const el=document.getElementById(chartId);
-    if(el) charts[chartId]=new Chart(el,{type:'bar',data:{labels,datasets:[
+
+    // Faturamento por mês
+    destroyChart(cFat);
+    const elFat=document.getElementById(cFat);
+    if(elFat) charts[cFat]=new Chart(elFat,{type:'bar',data:{labels,datasets:[
       {label:'Faturamento',data:vals,backgroundColor:vals.map(v=>v>=avgFat?'rgba(99,102,241,.75)':'rgba(148,163,184,.55)'),borderRadius:5,order:2},
       {label:'Média',data:vals.map(()=>avgFat),type:'line',borderColor:'#f59e0b',borderWidth:2,borderDash:[5,3],pointRadius:0,fill:false,order:1}
     ]},options:{...bo,plugins:{...bo.plugins,legend:{display:true,labels:{color:'#777',font:{size:11},boxWidth:14}}}}});
 
-    destroyChart(chartIdPed);
-    const el2=document.getElementById(chartIdPed);
-    if(el2) charts[chartIdPed]=new Chart(el2,{type:'bar',data:{labels,datasets:[
+    // Pedidos por mês
+    destroyChart(cPed);
+    const elPed=document.getElementById(cPed);
+    if(elPed) charts[cPed]=new Chart(elPed,{type:'bar',data:{labels,datasets:[
       {label:'Pedidos',data:mesesData.map(m=>m.pedidos),backgroundColor:'rgba(20,184,166,.70)',borderRadius:5},
       {label:'Cancelados',data:mesesData.map(m=>m.cancelados),backgroundColor:'rgba(239,68,68,.55)',borderRadius:5}
     ]},options:{...bo,plugins:{...bo.plugins,legend:{display:true,labels:{color:'#777',font:{size:11},boxWidth:14}}}}});
+
+    // % por canal (doughnut)
+    destroyChart(cCanal);
+    const elCanal=document.getElementById(cCanal);
+    const canalKeys = Object.keys(canalTotal).sort((a,b)=>canalTotal[b]-canalTotal[a]);
+    const canalVals = canalKeys.map(k=>canalTotal[k]);
+    const canalPalette = ['#6366f1','#22c55e','#f59e0b','#14b8a6','#a855f7','#ef4444','#3b82f6','#64748b'];
+    if(elCanal) charts[cCanal]=new Chart(elCanal,{type:'doughnut',data:{
+      labels:canalKeys,
+      datasets:[{data:canalVals,backgroundColor:canalPalette.slice(0,canalKeys.length),borderWidth:2,borderColor:'var(--surface)'}]
+    },options:{responsive:true,maintainAspectRatio:true,cutout:'62%',
+      plugins:{
+        legend:{display:true,position:'bottom',labels:{color:'#aaa',font:{size:11},padding:10,boxWidth:12}},
+        tooltip:{backgroundColor:'#111',borderColor:'#333',borderWidth:1,titleColor:'#fff',bodyColor:'#aaa',padding:10,
+          callbacks:{label:ctx=>{
+            const total=ctx.dataset.data.reduce((a,b)=>a+b,0);
+            const pct=total?((ctx.raw/total)*100).toFixed(1):'0';
+            return ` ${ctx.label}: ${R(ctx.raw)} (${pct}%)`;
+          }}}
+      }
+    }});
+
+    // Faturamento por loja por mês (stacked bar)
+    destroyChart(cLoja);
+    const elLoja=document.getElementById(cLoja);
+    if(elLoja) charts[cLoja]=new Chart(elLoja,{type:'bar',data:{labels,datasets:[
+      {label:'Singular Sushi',data:mesesData.map(m=>m.sing.fat),backgroundColor:'rgba(30,30,30,.80)',borderColor:'rgba(30,30,30,1)',borderWidth:1,borderRadius:3,stack:'loja'},
+      {label:'Brisa Sushi',data:mesesData.map(m=>m.brisa.fat),backgroundColor:'rgba(168,85,247,.65)',borderColor:'rgba(168,85,247,1)',borderWidth:1,borderRadius:3,stack:'loja'}
+    ]},options:{...bo,
+      plugins:{...bo.plugins,legend:{display:true,labels:{color:'#777',font:{size:11},boxWidth:14}}},
+      scales:{...bo.scales,x:{...bo.scales.x,stacked:true},y:{...bo.scales.y,stacked:true}}
+    }});
   },80);
 
   return `
-    <div class="cards" style="margin-bottom:20px">
+    <!-- KPIs Gerais -->
+    <div class="cards" style="margin-bottom:16px">
       <div class="card blue"><div class="label">Faturamento Total</div><div class="value">${R(totalFat)}</div><div class="sub">${mesesData.length} meses</div></div>
       <div class="card green"><div class="label">Total de Pedidos</div><div class="value">${N(totalPed)}</div><div class="sub">${totalCanc} cancelados</div></div>
       <div class="card"><div class="label">Ticket Médio Geral</div><div class="value">${R(ticketGeral)}</div></div>
-      <div class="card purple"><div class="label">Melhor Mês</div><div class="value">${melhor.label.replace('/2026','')}</div><div class="sub">${R(melhor.fat)}</div></div>
-      ${mesesData.length>1?`<div class="card yellow"><div class="label">Menor Mês</div><div class="value">${pior.label.replace('/2026','')}</div><div class="sub">${R(pior.fat)}</div></div>`:''}
+      <div class="card purple"><div class="label">Melhor Mês</div><div class="value">${melhor.label.replace('/2026','').replace('/2025','')}</div><div class="sub">${R(melhor.fat)}</div></div>
+      ${mesesData.length>1?`<div class="card yellow"><div class="label">Menor Mês</div><div class="value">${pior.label.replace('/2026','').replace('/2025','')}</div><div class="sub">${R(pior.fat)}</div></div>`:''}
     </div>
 
+    <!-- KPIs por Loja -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+      <!-- Singular -->
+      <div style="background:var(--surface);border-radius:12px;padding:16px;border:1px solid rgba(30,30,30,.6)">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;text-transform:uppercase">Singular Sushi</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+          <div><div style="font-size:11px;color:var(--muted)">Faturamento</div><div style="font-size:18px;font-weight:700;color:var(--text)">${R(singTotalFat)}</div><div style="font-size:11px;color:var(--muted)">${singPct.toFixed(1)}% do total</div></div>
+          <div><div style="font-size:11px;color:var(--muted)">Pedidos</div><div style="font-size:18px;font-weight:700;color:var(--text)">${N(singTotalPed)}</div></div>
+          <div><div style="font-size:11px;color:var(--muted)">Ticket Médio</div><div style="font-size:18px;font-weight:700;color:var(--text)">${R(singTicket)}</div></div>
+        </div>
+      </div>
+      <!-- Brisa -->
+      <div style="background:var(--surface);border-radius:12px;padding:16px;border:1px solid rgba(168,85,247,.3)">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;color:#a855f7;margin-bottom:12px;text-transform:uppercase">Brisa Sushi</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+          <div><div style="font-size:11px;color:var(--muted)">Faturamento</div><div style="font-size:18px;font-weight:700;color:var(--text)">${R(brisaTotalFat)}</div><div style="font-size:11px;color:var(--muted)">${brisaPct.toFixed(1)}% do total</div></div>
+          <div><div style="font-size:11px;color:var(--muted)">Pedidos</div><div style="font-size:18px;font-weight:700;color:var(--text)">${N(brisaTotalPed)}</div></div>
+          <div><div style="font-size:11px;color:var(--muted)">Ticket Médio</div><div style="font-size:18px;font-weight:700;color:var(--text)">${R(brisaTicket)}</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gráficos linha 1 -->
+    <div class="grid2" style="margin-bottom:16px">
+      <div class="chart-box"><h3>Faturamento por Mês</h3><canvas id="${cFat}"></canvas></div>
+      <div class="chart-box"><h3>Pedidos por Mês</h3><canvas id="${cPed}"></canvas></div>
+    </div>
+
+    <!-- Gráficos linha 2 -->
     <div class="grid2" style="margin-bottom:20px">
-      <div class="chart-box"><h3>Faturamento por Mês</h3><canvas id="${chartId}"></canvas></div>
-      <div class="chart-box"><h3>Pedidos por Mês</h3><canvas id="${chartIdPed}"></canvas></div>
+      <div class="chart-box"><h3>% por Canal (faturamento acumulado)</h3><canvas id="${cCanal}" style="max-height:260px"></canvas></div>
+      <div class="chart-box"><h3>Faturamento por Loja / Mês</h3><canvas id="${cLoja}"></canvas></div>
     </div>
 
-    <div class="table-box">
-      <h3>Comparativo Mensal</h3>
+    <!-- Tabela Comparativa -->
+    <div class="table-box" style="margin-bottom:20px">
+      <h3>Comparativo Mensal — Geral</h3>
       <table>
         <thead><tr>
           <th>Mês</th><th>Faturamento</th><th>Pedidos</th><th>Cancelados</th><th>Ticket Médio</th>
@@ -5456,10 +5556,9 @@ function buildResumoAnualHTML() {
         <tbody>
           ${mesesData.map(m=>{
             const vs = totalFat/mesesData.length;
-            const diff = m.fat - vs;
-            const pct = vs ? diff/vs : 0;
+            const pct = vs ? (m.fat-vs)/vs : 0;
             return `<tr>
-              <td><b>${m.label.replace('/2026','')}</b></td>
+              <td><b>${m.label.replace('/2026','').replace('/2025','')}</b></td>
               <td><b>${R(m.fat)}</b></td>
               <td>${N(m.pedidos)}</td>
               <td style="color:${m.cancelados>0?'#ef4444':'var(--muted)'};">${m.cancelados}</td>
@@ -5475,6 +5574,43 @@ function buildResumoAnualHTML() {
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- Tabela por Loja -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      ${[
+        {key:'sing',  nome:'Singular Sushi', cor:'rgba(30,30,30,.6)',    corT:'var(--text)'},
+        {key:'brisa', nome:'Brisa Sushi',    cor:'rgba(168,85,247,.3)',  corT:'#a855f7'}
+      ].map(loja=>{
+        const lCanais = [...new Set(mesesData.flatMap(m=>Object.keys(m[loja.key].porCanal)))].sort((a,b)=>{
+          const ta=mesesData.reduce((s,m)=>s+(m[loja.key].porCanal[a]||0),0);
+          const tb=mesesData.reduce((s,m)=>s+(m[loja.key].porCanal[b]||0),0);
+          return tb-ta;
+        });
+        return `<div class="table-box" style="border-color:${loja.cor}">
+          <h3 style="color:${loja.corT}">${loja.nome}</h3>
+          <table>
+            <thead><tr>
+              <th>Mês</th><th>Faturamento</th><th>Pedidos</th>
+              ${lCanais.map(c=>`<th>${c}</th>`).join('')}
+            </tr></thead>
+            <tbody>
+              ${mesesData.map(m=>`<tr>
+                <td><b>${m.label.replace('/2026','').replace('/2025','')}</b></td>
+                <td>${R(m[loja.key].fat)}</td>
+                <td>${N(m[loja.key].pedidos)}</td>
+                ${lCanais.map(c=>`<td style="color:var(--muted)">${m[loja.key].porCanal[c]?R(m[loja.key].porCanal[c]):'—'}</td>`).join('')}
+              </tr>`).join('')}
+              <tr style="background:var(--surface2);font-weight:700;border-top:2px solid #333">
+                <td>TOTAL</td>
+                <td>${R(mesesData.reduce((s,m)=>s+m[loja.key].fat,0))}</td>
+                <td>${N(mesesData.reduce((s,m)=>s+m[loja.key].pedidos,0))}</td>
+                ${lCanais.map(c=>`<td>${R(mesesData.reduce((s,m)=>s+(m[loja.key].porCanal[c]||0),0))}</td>`).join('')}
+              </tr>
+            </tbody>
+          </table>
+        </div>`;
+      }).join('')}
     </div>`;
 }
 
