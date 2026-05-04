@@ -665,6 +665,10 @@
             <button class="btn btn-outline" style="font-size:11px;padding:5px 10px" onclick="clearDateFilter()">Limpar</button>
             <span id="filterCount" style="font-size:11px;color:var(--muted);margin-left:4px"></span>
           </div>
+          <div id="tabs-anual-bar" style="display:none;align-items:center;gap:6px;padding:0 0 0 2px;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:8px">
+            <span style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;flex-shrink:0;padding-right:6px">Visão Anual</span>
+            <div class="tabs" id="tabs-anual" style="border:none;padding:0;gap:4px;flex-wrap:nowrap"></div>
+          </div>
           <div class="tabs" id="tabs"></div>
           <div id="panelsContainer"></div>
         </div>
@@ -2192,42 +2196,41 @@ function renderTransactionsDashboard(wb) {
   // Salvar dados do mês atual no localStorage para a aba anual
   salvarMesNoAnual(ativos);
 
-  // Resumo primeiro
+  // Usa buildTransactionUI para montar todas as abas (evita duplicação)
+  const _tabs = document.getElementById('tabs');
+  const _cont = document.getElementById('panelsContainer');
+  if(_tabs) _tabs.innerHTML='';
+  if(_cont) _cont.innerHTML='';
+  const _tabsAnual = document.getElementById('tabs-anual');
+  const _barAnual  = document.getElementById('tabs-anual-bar');
+  if(_tabsAnual) _tabsAnual.innerHTML='';
+  if(_barAnual)  _barAnual.style.display='flex';
+
+  addTabAnual('txn-resumo-anual','Resumo Anual',false);
+  addTabAnual('txn-anual','Meta Anual',false);
+
   addTab('txn-resumo','Resumo',true);
-  addTab('txn-anual','Ano 2026',false);
-  addTab('txn-metas','Metas',false);
+  addTab('txn-metas','Meta Mensal',false);
   addTab('txn-canais','Por Canal',false);
   addTab('txn-bairros','Por Bairro',false);
   addTab('txn-entregadores','Entregadores',false);
   addTab('txn-pedidos','Pedidos',false);
 
-  const resumoPanel = addPanel('txn-resumo',true);
-  resumoPanel.innerHTML = buildResumHTML(ativos, cancelados, rows);
-
-  const anualPanel = addPanel('txn-anual',false);
-  anualPanel.innerHTML = buildAnual2026HTML();
-
-  const metasPanel = addPanel('txn-metas',false);
-  metasPanel.innerHTML = buildMetasHTML(ativos);
-
-  const canaisPanel = addPanel('txn-canais',false);
-  canaisPanel.innerHTML = buildCanaisHTML(ativos);
-
-  const bairrosPanel = addPanel('txn-bairros',false);
-  bairrosPanel.innerHTML = buildBairrosHTML(ativos);
-
-  const entregPanel = addPanel('txn-entregadores',false);
-  entregPanel.innerHTML = buildEntregadoresHTML(ativos);
-
-  const pedidosPanel = addPanel('txn-pedidos',false);
-  pedidosPanel.innerHTML = buildPedidosHTML(rows);
-
-  // Tab IA
   const iaTabTxn = document.createElement('div');
   iaTabTxn.className = 'tab'; iaTabTxn.textContent = '✦ Análise IA';
   iaTabTxn.style.marginLeft = 'auto'; iaTabTxn.style.borderStyle = 'dashed';
   iaTabTxn.onclick = () => activateTab('ia-txn');
   document.getElementById('tabs').appendChild(iaTabTxn);
+
+  addPanel('txn-resumo-anual',false).innerHTML = buildResumoAnualHTML();
+  addPanel('txn-anual',false).innerHTML        = buildAnual2026HTML();
+  addPanel('txn-resumo',true).innerHTML        = buildResumHTML(ativos, cancelados, rows);
+  addPanel('txn-metas',false).innerHTML        = buildMetasHTML(ativos);
+  addPanel('txn-canais',false).innerHTML       = buildCanaisHTML(ativos);
+  addPanel('txn-bairros',false).innerHTML      = buildBairrosHTML(ativos);
+  addPanel('txn-entregadores',false).innerHTML = buildEntregadoresHTML(ativos);
+  addPanel('txn-pedidos',false).innerHTML      = buildPedidosHTML(rows);
+  addPanel('ia-txn',false).innerHTML           = buildIAPanel('comercial-txn', null, 'Análise de Vendas por Período — faturamento, canais, entregadores, pedidos, tendências e sazonalidade');
   const iaPanel = addPanel('ia-txn', false);
   iaPanel.innerHTML = buildIAPanel('comercial-txn', null, 'Análise de Vendas por Período — faturamento, canais, entregadores, pedidos, tendências e sazonalidade');
 
@@ -5365,6 +5368,116 @@ async function buscarEAtualizarArquivo(url) {
   }
 }
 
+function addTabAnual(id, label, active) {
+  const t = document.createElement('div');
+  t.className = 'tab' + (active ? ' active' : '');
+  t.textContent = label;
+  t.onclick = () => activateTab(id);
+  document.getElementById('tabs-anual').appendChild(t);
+}
+
+function buildResumoAnualHTML() {
+  const arq = vendasArqLoad();
+  if(!arq.length) return `<div style="padding:40px;text-align:center;color:var(--muted)">Nenhum mês arquivado ainda.<br>Suba relatórios mensais para ver o compilado anual.</div>`;
+
+  const mesesData = arq.map(a => {
+    const rows = vendasMesCarregar(a.mesKey);
+    if(!rows) return null;
+    const ativos = rows.filter(r => str(r['Está cancelado']).toUpperCase() !== 'S');
+    const cancelados = rows.filter(r => str(r['Está cancelado']).toUpperCase() === 'S');
+    const fat = ativos.reduce((s,r)=>s+(parseNum(r['Total'])||0),0);
+    const ticket = ativos.length ? fat/ativos.length : 0;
+    const porCanal = {};
+    ativos.forEach(r=>{ const c=str(r['Canal de venda'])||'Outros'; porCanal[c]=(porCanal[c]||0)+(parseNum(r['Total'])||0); });
+    return { mesKey:a.mesKey, label:a.label, fat, pedidos:ativos.length, cancelados:cancelados.length, ticket, porCanal };
+  }).filter(Boolean).sort((a,b)=>a.mesKey.localeCompare(b.mesKey));
+
+  if(!mesesData.length) return `<div style="padding:40px;text-align:center;color:var(--muted)">Sem dados carregados.</div>`;
+
+  const totalFat = mesesData.reduce((s,m)=>s+m.fat,0);
+  const totalPed = mesesData.reduce((s,m)=>s+m.pedidos,0);
+  const totalCanc= mesesData.reduce((s,m)=>s+m.cancelados,0);
+  const ticketGeral = totalPed ? totalFat/totalPed : 0;
+  const melhor = mesesData.reduce((b,m)=>m.fat>b.fat?m:b, mesesData[0]);
+  const pior   = mesesData.reduce((b,m)=>m.fat<b.fat?m:b, mesesData[0]);
+
+  // Todos os canais presentes
+  const todosCanais = [...new Set(mesesData.flatMap(m=>Object.keys(m.porCanal)))];
+
+  const chartId = 'cResumoAnualFat_'+Date.now();
+  const chartIdPed = 'cResumoAnualPed_'+Date.now();
+
+  setTimeout(()=>{
+    if(typeof Chart==='undefined') return;
+    const labels = mesesData.map(m=>m.label.replace('/2026',''));
+    const vals = mesesData.map(m=>m.fat);
+    const avgFat = vals.reduce((a,b)=>a+b,0)/(vals.length||1);
+    const bo = { responsive:true, maintainAspectRatio:true,
+      plugins:{ legend:{display:false}, tooltip:{backgroundColor:'#111',borderColor:'#333',borderWidth:1,titleColor:'#fff',bodyColor:'#aaa',padding:10,callbacks:{label:ctx=>` ${R(ctx.raw)}`}} },
+      scales:{ x:{grid:{color:'rgba(0,0,0,.06)'},ticks:{color:'#777',font:{size:11}}}, y:{grid:{color:'rgba(0,0,0,.06)'},ticks:{color:'#777',font:{size:11},callback:v=>R(v)}} }
+    };
+    destroyChart(chartId);
+    const el=document.getElementById(chartId);
+    if(el) charts[chartId]=new Chart(el,{type:'bar',data:{labels,datasets:[
+      {label:'Faturamento',data:vals,backgroundColor:vals.map(v=>v>=avgFat?'rgba(99,102,241,.75)':'rgba(148,163,184,.55)'),borderRadius:5,order:2},
+      {label:'Média',data:vals.map(()=>avgFat),type:'line',borderColor:'#f59e0b',borderWidth:2,borderDash:[5,3],pointRadius:0,fill:false,order:1}
+    ]},options:{...bo,plugins:{...bo.plugins,legend:{display:true,labels:{color:'#777',font:{size:11},boxWidth:14}}}}});
+
+    destroyChart(chartIdPed);
+    const el2=document.getElementById(chartIdPed);
+    if(el2) charts[chartIdPed]=new Chart(el2,{type:'bar',data:{labels,datasets:[
+      {label:'Pedidos',data:mesesData.map(m=>m.pedidos),backgroundColor:'rgba(20,184,166,.70)',borderRadius:5},
+      {label:'Cancelados',data:mesesData.map(m=>m.cancelados),backgroundColor:'rgba(239,68,68,.55)',borderRadius:5}
+    ]},options:{...bo,plugins:{...bo.plugins,legend:{display:true,labels:{color:'#777',font:{size:11},boxWidth:14}}}}});
+  },80);
+
+  return `
+    <div class="cards" style="margin-bottom:20px">
+      <div class="card blue"><div class="label">Faturamento Total</div><div class="value">${R(totalFat)}</div><div class="sub">${mesesData.length} meses</div></div>
+      <div class="card green"><div class="label">Total de Pedidos</div><div class="value">${N(totalPed)}</div><div class="sub">${totalCanc} cancelados</div></div>
+      <div class="card"><div class="label">Ticket Médio Geral</div><div class="value">${R(ticketGeral)}</div></div>
+      <div class="card purple"><div class="label">Melhor Mês</div><div class="value">${melhor.label.replace('/2026','')}</div><div class="sub">${R(melhor.fat)}</div></div>
+      ${mesesData.length>1?`<div class="card yellow"><div class="label">Menor Mês</div><div class="value">${pior.label.replace('/2026','')}</div><div class="sub">${R(pior.fat)}</div></div>`:''}
+    </div>
+
+    <div class="grid2" style="margin-bottom:20px">
+      <div class="chart-box"><h3>Faturamento por Mês</h3><canvas id="${chartId}"></canvas></div>
+      <div class="chart-box"><h3>Pedidos por Mês</h3><canvas id="${chartIdPed}"></canvas></div>
+    </div>
+
+    <div class="table-box">
+      <h3>Comparativo Mensal</h3>
+      <table>
+        <thead><tr>
+          <th>Mês</th><th>Faturamento</th><th>Pedidos</th><th>Cancelados</th><th>Ticket Médio</th>
+          ${todosCanais.map(c=>`<th>${c}</th>`).join('')}
+          <th>vs. Média</th>
+        </tr></thead>
+        <tbody>
+          ${mesesData.map(m=>{
+            const vs = totalFat/mesesData.length;
+            const diff = m.fat - vs;
+            const pct = vs ? diff/vs : 0;
+            return `<tr>
+              <td><b>${m.label.replace('/2026','')}</b></td>
+              <td><b>${R(m.fat)}</b></td>
+              <td>${N(m.pedidos)}</td>
+              <td style="color:${m.cancelados>0?'#ef4444':'var(--muted)'};">${m.cancelados}</td>
+              <td>${R(m.ticket)}</td>
+              ${todosCanais.map(c=>`<td style="color:var(--muted)">${m.porCanal[c]?R(m.porCanal[c]):'—'}</td>`).join('')}
+              <td><span class="badge ${pct>=0?'green':'red'}">${pct>=0?'+':''}${(pct*100).toFixed(1)}%</span></td>
+            </tr>`;
+          }).join('')}
+          <tr style="background:var(--surface2);font-weight:700;border-top:2px solid #333">
+            <td>TOTAL</td><td>${R(totalFat)}</td><td>${N(totalPed)}</td><td>${totalCanc}</td><td>${R(ticketGeral)}</td>
+            ${todosCanais.map(c=>`<td style="color:var(--muted)">${R(mesesData.reduce((s,m)=>s+(m.porCanal[c]||0),0))}</td>`).join('')}
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+}
+
 function buildTransactionUI(rows, ativos, cancelados) {
   document.getElementById('periodFilterBar').style.display = 'flex';
   document.getElementById('btnExportAba').classList.add('visible');
@@ -5381,9 +5494,17 @@ function buildTransactionUI(rows, ativos, cancelados) {
   const container = document.getElementById('panelsContainer');
   tabs.innerHTML = ''; container.innerHTML = '';
 
+  // ── Abas Anuais (barra separada) ──
+  const tabsAnual = document.getElementById('tabs-anual');
+  const barAnual  = document.getElementById('tabs-anual-bar');
+  if(tabsAnual) tabsAnual.innerHTML = '';
+  if(barAnual)  barAnual.style.display = 'flex';
+  addTabAnual('txn-resumo-anual','Resumo Anual',false);
+  addTabAnual('txn-anual','Meta Anual',false);
+
+  // ── Abas Mensais ──
   addTab('txn-resumo','Resumo',true);
-  addTab('txn-anual','Ano 2026',false);
-  addTab('txn-metas','Metas',false);
+  addTab('txn-metas','Meta Mensal',false);
   addTab('txn-canais','Por Canal',false);
   addTab('txn-bairros','Por Bairro',false);
   addTab('txn-entregadores','Entregadores',false);
@@ -5396,8 +5517,9 @@ function buildTransactionUI(rows, ativos, cancelados) {
   iaTabTxn.onclick = () => activateTab('ia-txn');
   tabs.appendChild(iaTabTxn);
 
-  addPanel('txn-resumo',true).innerHTML       = buildResumHTML(ativos, cancelados, rows);
+  addPanel('txn-resumo-anual',false).innerHTML = buildResumoAnualHTML();
   addPanel('txn-anual',false).innerHTML        = buildAnual2026HTML();
+  addPanel('txn-resumo',true).innerHTML        = buildResumHTML(ativos, cancelados, rows);
   addPanel('txn-metas',false).innerHTML        = buildMetasHTML(ativos);
   addPanel('txn-canais',false).innerHTML       = buildCanaisHTML(ativos);
   addPanel('txn-bairros',false).innerHTML      = buildBairrosHTML(ativos);
